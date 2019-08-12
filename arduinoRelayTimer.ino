@@ -17,33 +17,24 @@ unsigned long time1;
 
 unsigned int counter = 0;
 
+#define outputA 2
+#define outputB 3
+#define knobSwitch 8
+//int counter = 0; 
+int aState;
+int aLastState;  
+
 void setup() {
+
+  pinMode (outputA,INPUT_PULLUP);
+  pinMode (outputB,INPUT_PULLUP);
+  
+  aLastState = digitalRead(outputA);  
  
   lcd.init();
   lcd.backlight();
-    
-  now = rtc.now();
-  
-  lcd.setCursor(6,0);
-  lcd.print(
-    formatDateNumber(now.hour())
-    + String(":")
-    + formatDateNumber(now.minute())
-    + String(":")
-    + formatDateNumber(now.second()));
-
-  lcd.setCursor(0,1);
-  lcd.print(
-    daysOfTheWeek[now.dayOfTheWeek()]
-    + String(" ")
-    + now.year()
-    + String("/")
-    + formatDateNumber(now.month())
-    + String("/")
-    + formatDateNumber(now.day()));
-
-    lcd.setCursor(3,2);
-    lcd.print("WORKING HOURS");
+     
+ 
 
 //  pinMode (pinRelay, OUTPUT);
 //  
@@ -53,12 +44,35 @@ void setup() {
 //
 //  time1 = millis();
   
-//  Serial.begin(9600);  
+  Serial.begin(9600);  
   
 }
 
 void loop() {
+  
+  
+  
 
+  aState = digitalRead(outputA);
+
+     
+   if (aState != aLastState){     
+     // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+     if (digitalRead(outputB) != aState) { 
+       counter ++;
+     Serial.println("GORAaaaaaaaaaaaaaaaa");
+     displayMainScreen();
+     } else {
+       counter --;
+     Serial.println("DOL");
+     }
+     delay(100);
+   } 
+   aLastState = aState;
+//
+//  displayMainScreen();
+   
+//  delay(10);
 
 //  Serial.print(counter);
 //  Serial.print("\t");
@@ -96,4 +110,26 @@ void loop() {
 String formatDateNumber(int number) {
   String formattedNumber = String(number);
   return number < 10 ? "0" + formattedNumber : formattedNumber;
+}
+
+void displayMainScreen() {
+  now = rtc.now();
+  lcd.setCursor(6,0);
+  lcd.print(
+    formatDateNumber(now.hour())
+    + String(":")
+    + formatDateNumber(now.minute())
+    + String(":")
+    + formatDateNumber(now.second()));
+  lcd.setCursor(0,1);
+  lcd.print(
+    daysOfTheWeek[now.dayOfTheWeek()]
+    + String(", ")
+    + now.year()
+    + String("/")
+    + formatDateNumber(now.month())
+    + String("/")
+    + formatDateNumber(now.day()));
+  lcd.setCursor(3,2);
+  lcd.print("WORKING HOURS");
 }
