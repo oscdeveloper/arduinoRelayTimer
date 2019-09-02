@@ -20,11 +20,10 @@ DateTime now;
 
 String workingMode[] = {"Temperature", "Interval"};
 String settingsMenu[] = {"Clock Date/Time", "Working Mode", "Working Hours", "Interval", "Temperature"};
-//String settingsMenu2[] = {"Interval", "Temperature"};
 //byte settingsMenuItemsSize = sizeof(settingsMenuItems[1]) / sizeof(settingsMenuItems[1][0]);
 
-short screenLevel = 1; // 1 - settings, 0 - main screen
-bool drawOnceSettingsMenu = true;
+short screenLevel = 1;
+bool drawScreenOnce = true;
 unsigned short menuStart = 0;
 unsigned short menuEnd = 2;
 unsigned short indicatorRow = 1;
@@ -41,7 +40,7 @@ void printIndicator(String text = "") {
 }
 
 void drawSettingsMenu() {
-  if ( drawOnceSettingsMenu ) {
+  if ( drawScreenOnce ) {
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("SETTINGS");
@@ -52,7 +51,7 @@ void drawSettingsMenu() {
       lcd.print(settingsMenu[menuItem]);
       row++;
     }
-    drawOnceSettingsMenu = false;
+    drawScreenOnce = false;
   }
 }
 
@@ -66,7 +65,7 @@ void runMenuSettings() {
         indicatorRow = indicatorRowMax;
         printIndicator();
       } else {
-        drawOnceSettingsMenu = true;
+        drawScreenOnce = true;
         menuStart = 3;
         menuEnd = 4;
         indicatorRow=1;
@@ -84,7 +83,7 @@ void runMenuSettings() {
         indicatorRow = 1;
         printIndicator();
       } else {
-        drawOnceSettingsMenu = true;
+        drawScreenOnce = true;
         menuStart = 0;
         menuEnd = 2;
         indicatorRow=3;
@@ -95,10 +94,71 @@ void runMenuSettings() {
       indicatorRow--;
       printIndicator();    
     }
-
+  } else if ( rotaryBtnState == 1 ) {
+    drawScreenOnce = true;
+    if (menuStart == 0) {
+      switch (indicatorRow) {
+        case 1:
+          screenLevel = 0;
+          break;
+        case 2:
+          screenLevel = 2;
+          break;
+      }
+    }
   }
 }
 
+void runHomeScreen() {
+  lcd.clear();
+  now = rtc.now();
+  lcd.setCursor(6,0);
+  lcd.print(
+    formatDateNumber(now.hour())
+    + String(":")
+    + formatDateNumber(now.minute())
+    + String(":")
+    + formatDateNumber(now.second()));
+  lcd.setCursor(0,1);
+  lcd.print(
+    daysOfTheWeek[now.dayOfTheWeek()]
+    + String(", ")
+    + now.year()
+    + String("/")
+    + formatDateNumber(now.month())
+    + String("/")
+    + formatDateNumber(now.day()));
+  lcd.setCursor(3,2);
+  lcd.print("WORKING HOURS");
+}
+
+void runWorkingMode() {
+  short i=0;
+  if (drawScreenOnce) {
+    i=0;
+    indicatorRow = 2;
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("SET WORKING MODE");
+    lcd.setCursor(0,2);
+    lcd.print("Mode: ");
+    lcd.setCursor(6,2);
+    lcd.print(workingMode[i]);
+    drawScreenOnce = false;
+  }
+  if ( rotaryState == 1 ) {
+    Serial.println(i);
+    i++;
+    if (i > 1) {
+      i=0; 
+    }
+    lcd.setCursor(6,2);
+    lcd.print("                   ");
+    lcd.setCursor(6,2);
+    lcd.print(workingMode[i]);
+    Serial.println(i);
+  }
+}
 
 void setup() {
  
@@ -106,7 +166,7 @@ void setup() {
   lcd.noBacklight();
 
   rotary.setTrigger(LOW);
-  rotary.setDebounceDelay(5);
+//  rotary.setDebounceDelay(5);
   
   Serial.begin(9600);  
   
@@ -118,10 +178,25 @@ void loop() {
   rotaryState = rotary.rotate(); // 0 = not turning, 1 = CW, 2 = CCW
   rotaryBtnState = rotary.pushType(700);
 
-  if (screenLevel == 1) {
-    runMenuSettings();
-  } else if (screenLevel == 1) {
-    // main screen
+  if ( rotaryBtnState == 1 ) {
+    Serial.println(String("Pressed: ") + "Short");
+  }
+
+  if ( rotaryBtnState == 2 ) {
+    Serial.println(String("Pressed: ") + "Long");
+  }
+
+  switch(screenLevel) {
+    case 0:
+    default:   
+      runHomeScreen();
+      break;
+    case 1:
+      runMenuSettings();
+      break;
+    case 2:
+      runWorkingMode();
+      break;
   }
 
 
@@ -152,28 +227,7 @@ String formatDateNumber(int number) {
   return number < 10 ? "0" + formattedNumber : formattedNumber;
 }
 
-void displayMainScreen() {
-  lcd.clear();
-  now = rtc.now();
-  lcd.setCursor(6,0);
-  lcd.print(
-    formatDateNumber(now.hour())
-    + String(":")
-    + formatDateNumber(now.minute())
-    + String(":")
-    + formatDateNumber(now.second()));
-  lcd.setCursor(0,1);
-  lcd.print(
-    daysOfTheWeek[now.dayOfTheWeek()]
-    + String(", ")
-    + now.year()
-    + String("/")
-    + formatDateNumber(now.month())
-    + String("/")
-    + formatDateNumber(now.day()));
-  lcd.setCursor(3,2);
-  lcd.print("WORKING HOURS");
-}
+
 
 //byte settingsMenuItemsArraySize(byte menuIndex) {
 //  return sizeof(settingsMenuItems[menuIndex]) / sizeof(settingsMenuItems[menuIndex][0])
