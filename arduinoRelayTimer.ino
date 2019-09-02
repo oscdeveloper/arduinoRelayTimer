@@ -18,10 +18,14 @@ byte rotaryBtnState;
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 DateTime now;
 
+String settingsMenuItems[] = { "Temperature", "Date/Time", "Working hours" };
+byte settingsMenuItemsSize = (sizeof(settingsMenuItems) / sizeof(settingsMenuItems[0]));
+
+
 void setup() {
  
   lcd.init();
-  lcd.backlight();
+  lcd.noBacklight();
 
   rotary.setTrigger(LOW);
   
@@ -47,10 +51,13 @@ void loop() {
   if ( rotaryBtnState == 1 ) {
     Serial.println(String("Pressed: ") + "Short");
     displayMainScreen();
+    lcd.backlight();
   }
 
   if ( rotaryBtnState == 2 ) {
+    lcd.noBacklight();
     Serial.println(String("Pressed: ") + "Long");
+    displaySettingsMenu();
   }
 //
 //  displayMainScreen();
@@ -69,6 +76,7 @@ String formatDateNumber(int number) {
 }
 
 void displayMainScreen() {
+  lcd.clear();
   now = rtc.now();
   lcd.setCursor(6,0);
   lcd.print(
@@ -88,4 +96,18 @@ void displayMainScreen() {
     + formatDateNumber(now.day()));
   lcd.setCursor(3,2);
   lcd.print("WORKING HOURS");
+}
+
+void displaySettingsMenu() {
+  lcd.clear();
+  for (int i=0; i<settingsMenuItemsSize; i++) {
+    if (i==0) {
+      lcd.setCursor(0,i);
+      lcd.print(">");
+    } else {
+      lcd.setCursor(1,i);
+    }
+    lcd.print(settingsMenuItems[i]);
+    delay(200);
+  }  
 }
