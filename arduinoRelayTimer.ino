@@ -18,8 +18,86 @@ byte rotaryBtnState;
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 DateTime now;
 
-String settingsMenuItems[] = { "Temperature", "Date/Time", "Working hours" };
-byte settingsMenuItemsSize = (sizeof(settingsMenuItems) / sizeof(settingsMenuItems[0]));
+String workingMode[] = {"Temperature", "Interval"};
+String settingsMenu[] = {"Clock Date/Time", "Working Mode", "Working Hours", "Interval", "Temperature"};
+//String settingsMenu2[] = {"Interval", "Temperature"};
+//byte settingsMenuItemsSize = sizeof(settingsMenuItems[1]) / sizeof(settingsMenuItems[1][0]);
+
+short screenLevel = 1; // 1 - settings, 0 - main screen
+bool drawOnceSettingsMenu = true;
+unsigned short menuStart = 0;
+unsigned short menuEnd = 2;
+unsigned short indicatorRow = 1;
+unsigned short indicatorRowMax = 3;
+char indicatorSign = 126;
+
+void printIndicator(String text = "") {
+  lcd.setCursor(0,indicatorRow);
+  if (text == "") {
+    lcd.print(indicatorSign);
+  } else {
+    lcd.print(text);
+  }
+}
+
+void drawSettingsMenu() {
+  if ( drawOnceSettingsMenu ) {
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("SETTINGS");
+    printIndicator();
+    short row=1;
+    for (short menuItem=menuStart; menuItem<=menuEnd; menuItem++) {
+      lcd.setCursor(1,row);
+      lcd.print(settingsMenu[menuItem]);
+      row++;
+    }
+    drawOnceSettingsMenu = false;
+  }
+}
+
+void runMenuSettings() {
+
+  drawSettingsMenu();
+
+  if ( rotaryState == 1 ) { // CW
+    if (indicatorRow >= indicatorRowMax) {
+      if (menuStart == 3) {   
+        indicatorRow = indicatorRowMax;
+        printIndicator();
+      } else {
+        drawOnceSettingsMenu = true;
+        menuStart = 3;
+        menuEnd = 4;
+        indicatorRow=1;
+        indicatorRowMax=2;  
+      }  
+    } else {
+      printIndicator(" ");
+      indicatorRow++;
+      printIndicator();
+    }
+    
+  } else if ( rotaryState == 2 ) { // CCW
+    if (indicatorRow <= 1) {
+      if (menuStart == 0) { 
+        indicatorRow = 1;
+        printIndicator();
+      } else {
+        drawOnceSettingsMenu = true;
+        menuStart = 0;
+        menuEnd = 2;
+        indicatorRow=3;
+        indicatorRowMax=3;
+      }
+    } else {
+      printIndicator(" ");
+      indicatorRow--;
+      printIndicator();    
+    }
+
+  }
+}
 
 
 void setup() {
@@ -28,37 +106,36 @@ void setup() {
   lcd.noBacklight();
 
   rotary.setTrigger(LOW);
-  
+  rotary.setDebounceDelay(5);
   
   Serial.begin(9600);  
+  
+  runMenuSettings();
 }
 
 void loop() {
- 
-  // 0 = not turning, 1 = CW, 2 = CCW
-  rotaryState = rotary.rotate();
-
-  if ( rotaryState == 1 ) {
-    Serial.println("CW");
-  }
-
-  if ( rotaryState == 2 ) {
-    Serial.println("CCW");
-  }
-
+     
+  rotaryState = rotary.rotate(); // 0 = not turning, 1 = CW, 2 = CCW
   rotaryBtnState = rotary.pushType(700);
 
-  if ( rotaryBtnState == 1 ) {
-    Serial.println(String("Pressed: ") + "Short");
-    displayMainScreen();
-    lcd.backlight();
+  if (screenLevel == 1) {
+    runMenuSettings();
+  } else if (screenLevel == 1) {
+    // main screen
   }
 
-  if ( rotaryBtnState == 2 ) {
-    lcd.noBacklight();
-    Serial.println(String("Pressed: ") + "Long");
-    displaySettingsMenu();
-  }
+
+//  if ( rotaryBtnState == 1 ) {
+//    Serial.println(String("Pressed: ") + "Short");
+//    displayMainScreen();
+//    lcd.backlight();
+//  }
+//
+//  if ( rotaryBtnState == 2 ) {
+//    lcd.noBacklight();
+//    Serial.println(String("Pressed: ") + "Long");
+////    displaySettingsMenu();
+//  }
 //
 //  displayMainScreen();
    
@@ -98,16 +175,6 @@ void displayMainScreen() {
   lcd.print("WORKING HOURS");
 }
 
-void displaySettingsMenu() {
-  lcd.clear();
-  for (int i=0; i<settingsMenuItemsSize; i++) {
-    if (i==0) {
-      lcd.setCursor(0,i);
-      lcd.print(">");
-    } else {
-      lcd.setCursor(1,i);
-    }
-    lcd.print(settingsMenuItems[i]);
-    delay(200);
-  }  
-}
+//byte settingsMenuItemsArraySize(byte menuIndex) {
+//  return sizeof(settingsMenuItems[menuIndex]) / sizeof(settingsMenuItems[menuIndex][0])
+//}
