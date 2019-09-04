@@ -17,25 +17,37 @@ byte rotaryState;
 byte rotaryBtnState;
 byte rotaryBtnLongState;
 
-unsigned short eepromWorkingModeAdr = 0;
+byte eepromWorkingModeAdr = 0;
+byte eepromTemperatureOnAdr1 = 1;
+byte eepromTemperatureOnAdr2 = 2;
+byte eepromTemperatureOnAdr3 = 3;
+byte eepromTemperatureOffAdr1 = 4;
+byte eepromTemperatureOffAdr2 = 5;
+byte eepromTemperatureOffAdr3 = 6;
+
+//unsigned long previousMillis = 0;
+//unsigned long previousMillis2 = 0;
+//const long interval = 500; 
 
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 DateTime now;
 
 String workingMode[] = {"Temperature", "Interval"};
+String workingModeUppercase[] = {"TEMPERATURE", "INTERVAL"};
 String settingsMenu[] = {"Clock Date/Time", "Working Mode", "Working Hours", "Interval", "Temperature"};
+String onOffItemsUppercase[] = {"ON", "OFF"};
 //byte settingsMenuItemsSize = sizeof(settingsMenuItems[1]) / sizeof(settingsMenuItems[1][0]);
 
-short screenLevel = 1;
+byte screenLevel = 1;
 bool screenExit = false;
 unsigned short menuStart = 0;
 unsigned short menuEnd = 2;
-unsigned short indicatorRow = 1;
+short indicatorRow = 1;
 unsigned short indicatorRowMax = 3;
 char indicatorSign = 126;
 
-void printIndicator(String text = "") {
-  lcd.setCursor(0,indicatorRow);
+void printIndicator(short printIndicatorRow, String text = "") {
+  lcd.setCursor(0,printIndicatorRow);
   if (text == "") {
     lcd.print(indicatorSign);
   } else {
@@ -43,11 +55,94 @@ void printIndicator(String text = "") {
   }
 }
 
+void runMenuTemperature() {
+  unsigned short indicatorRowTemperature = 2;
+  byte temperatureSettingsLevel = 0;
+  short temperatureValueOn = 0;
+  
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("SET TEMPERATURE");
+  printIndicator(indicatorRowTemperature);
+  short row=2;
+  for (short menuItem=0; menuItem<=1; menuItem++) {
+    lcd.setCursor(1,row);
+    lcd.print(onOffItemsUppercase[menuItem] + String(": "));
+    lcd.setCursor(6,row);
+    lcd.print("?*C");
+    row++;
+  }
+
+  lcd.setCursor(6,indicatorRowTemperature);
+
+  while(!screenExit) {    
+//    rotaryBtnLongState = rotary.pushLong(1000);
+    rotaryBtnState = rotary.push();
+    rotaryState = rotary.rotate();
+
+    if (temperatureSettingsLevel == 0) {
+      if (rotaryState == 1) { // CW
+        printIndicator(indicatorRowTemperature, " ");
+        indicatorRowTemperature++;
+        if (indicatorRowTemperature > 3) {
+          indicatorRowTemperature = 2;
+        }      
+        printIndicator(indicatorRowTemperature);
+      } else if (rotaryState == 2) { // CCW
+        printIndicator(indicatorRowTemperature, " ");
+        indicatorRowTemperature--;
+        if (indicatorRowTemperature < 2) {
+          indicatorRowTemperature = 3;
+        }      
+        printIndicator(indicatorRowTemperature);
+      }
+    } else if (temperatureSettingsLevel == 1) {
+
+      if (rotaryState == 1) { // CW
+        temperatureValueOn++;
+        lcd.print(temperatureValueOn + String("*C  "));
+      } else if (rotaryState == 2) { // CCW
+        temperatureValueOn--;
+        lcd.print(temperatureValueOn + String("*C  "));
+      }
+      
+      lcd.setCursor(6,indicatorRowTemperature);      
+    }
+
+    if (rotaryBtnState) {
+      temperatureSettingsLevel++;
+      if (temperatureSettingsLevel > 1) {
+        temperatureSettingsLevel = 0; 
+        if (indicatorRowTemperature == 2) {
+          lcd.setCursor(3,indicatorRowTemperature);
+        } else {
+          lcd.setCursor(4,indicatorRowTemperature);
+        }
+        lcd.print(":");
+        printIndicator(indicatorRowTemperature);
+      } else if (temperatureSettingsLevel == 1) {
+        lcd.setCursor(6,indicatorRowTemperature);
+        lcd.print(" *C  ");
+        if (indicatorRowTemperature == 2) {
+          lcd.setCursor(3,indicatorRowTemperature);
+        } else {
+          lcd.setCursor(4,indicatorRowTemperature);
+        }
+        lcd.print(indicatorSign);
+        printIndicator(indicatorRowTemperature, " ");
+      }
+    } else if (rotaryBtnLongState) {
+      screenExit = true;
+      screenLevel = 1;
+    }
+  }
+}
+
 void drawSettingsMenu() {
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("SETTINGS");
-  printIndicator();
+  printIndicator(indicatorRow);
   short row=1;
   for (short menuItem=menuStart; menuItem<=menuEnd; menuItem++) {
     lcd.setCursor(1,row);
@@ -69,7 +164,7 @@ void runMenuSettings() {
       if (indicatorRow >= indicatorRowMax) {
         if (menuStart == 3) {   
           indicatorRow = indicatorRowMax;
-          printIndicator();
+          printIndicator(indicatorRow);
         } else {
           menuStart = 3;
           menuEnd = 4;
@@ -78,16 +173,16 @@ void runMenuSettings() {
           drawSettingsMenu();
         }  
       } else {
-        printIndicator(" ");
+        printIndicator(indicatorRow, " ");
         indicatorRow++;
-        printIndicator();
+        printIndicator(indicatorRow);
       }
       
     } else if ( rotaryState == 2 ) { // CCW
       if (indicatorRow <= 1) {
         if (menuStart == 0) { 
           indicatorRow = 1;
-          printIndicator();
+          printIndicator(indicatorRow);
         } else {
           menuStart = 0;
           menuEnd = 2;
@@ -96,9 +191,9 @@ void runMenuSettings() {
           drawSettingsMenu();
         }
       } else {
-        printIndicator(" ");
+        printIndicator(indicatorRow, " ");
         indicatorRow--;
-        printIndicator();    
+        printIndicator(indicatorRow);    
       }
     } 
     
@@ -110,6 +205,15 @@ void runMenuSettings() {
             break;
           case 2:
             screenLevel = 2; // working type
+            break;
+        }
+      } else if (menuStart == 3) {
+        switch (indicatorRow) {
+          case 1:
+            screenLevel = 0; // interval
+            break;
+          case 2:
+            screenLevel = 3; // temperature
             break;
         }
       }
@@ -140,15 +244,13 @@ void runHomeScreen() {
     lcd.print(daysOfTheWeek[now.dayOfTheWeek()]);
     lcd.setCursor(10,1);
     lcd.print(
-      now.year()
+      formatDateNumber(now.day())
       + String("/")
       + formatDateNumber(now.month())
       + String("/")
-      + formatDateNumber(now.day()));
-    lcd.setCursor(4,2);
-    lcd.print("WORKING MODE");
-    workingModeValue ? lcd.setCursor(6,3) : lcd.setCursor(5,3);
-    lcd.print(workingMode[workingModeValue]);
+      + now.year());      
+    workingModeValue ? lcd.setCursor(3,3) : lcd.setCursor(2,3);
+    lcd.print(workingModeUppercase[workingModeValue] + String(" MODE"));
 
     if (rotaryBtnState) {
       screenExit = true;
@@ -161,7 +263,6 @@ void runWorkingMode() {
   byte savedValue = EEPROM.read(eepromWorkingModeAdr);
   if (savedValue != 0 && savedValue != 1) savedValue = 0;
   short i = savedValue;
-  indicatorRow = 2;
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("SET WORKING MODE");
@@ -201,6 +302,8 @@ void runWorkingMode() {
   }
 }
 
+
+
 void setup() {
  
   lcd.init();
@@ -239,6 +342,9 @@ void loop() {
       break;
     case 2:
       runWorkingMode();
+      break;
+    case 3:
+      runMenuTemperature();
       break;
   }
 
