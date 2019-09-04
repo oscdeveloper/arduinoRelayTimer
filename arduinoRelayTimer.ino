@@ -3,6 +3,7 @@
 #include <SimpleRotary.h>
 #include <LiquidCrystal_I2C.h>
 #include "RTClib.h"
+#include "EEPROMAnything.h"
 
 #define rotaryCCW 5
 #define rotaryCW 6
@@ -17,13 +18,9 @@ byte rotaryState;
 byte rotaryBtnState;
 byte rotaryBtnLongState;
 
-byte eepromWorkingModeAdr = 0;
-byte eepromTemperatureOnAdr1 = 1;
-byte eepromTemperatureOnAdr2 = 2;
-byte eepromTemperatureOnAdr3 = 3;
-byte eepromTemperatureOffAdr1 = 4;
-byte eepromTemperatureOffAdr2 = 5;
-byte eepromTemperatureOffAdr3 = 6;
+byte eepromWorkingMode = 0;
+byte eepromTemperatureOn = 1; // 1-2
+byte eepromTemperatureOff = 3; // 3-4
 
 //unsigned long previousMillis = 0;
 //unsigned long previousMillis2 = 0;
@@ -64,9 +61,12 @@ String formatDateNumber(int number) {
 void runMenuTemperature() {
   unsigned short indicatorRowTemperature = 2;
   byte temperatureSettingsLevel = 0;
-  short temperatureValueOn = 0;
-  short temperatureValueOff = 0;
   short temperatureValue = 0;
+  short temperatureValueOn;
+  short temperatureValueOff;
+  EEPROM_readAnything(eepromTemperatureOn, temperatureValueOn);
+  EEPROM_readAnything(eepromTemperatureOff, temperatureValueOff);
+  // TODO add to setup initial values to eeprom, ex. zero
   
   lcd.clear();
   lcd.setCursor(0,0);
@@ -77,7 +77,7 @@ void runMenuTemperature() {
     lcd.setCursor(1,row);
     lcd.print(onOffItemsUppercase[menuItem] + String(": "));
     lcd.setCursor(6,row);
-    lcd.print("?*C");
+    lcd.print((menuItem == 0 ? temperatureValueOn : temperatureValueOff) + String("*C"));
     row++;
   }
 
@@ -109,18 +109,30 @@ void runMenuTemperature() {
       if (rotaryState == 1) { // CW
         if (indicatorRowTemperature == 2) {
           temperatureValueOn++;
+          if (temperatureValueOn > 99) {
+            temperatureValueOn = 99;
+          }
           temperatureValue = temperatureValueOn;
         } else if (indicatorRowTemperature == 3) {
           temperatureValueOff++;
+          if (temperatureValueOff > 99) {
+            temperatureValueOff = 99;
+          }
           temperatureValue = temperatureValueOff;
         }
         lcd.print(temperatureValue + String("*C  "));
       } else if (rotaryState == 2) { // CCW
         if (indicatorRowTemperature == 2) {
           temperatureValueOn--;
+          if (temperatureValueOn < -99) {
+            temperatureValueOn = -99;
+          }
           temperatureValue = temperatureValueOn;
         } else if (indicatorRowTemperature == 3) {
           temperatureValueOff--;
+          if (temperatureValueOff < -99) {
+            temperatureValueOff = -99;
+          }
           temperatureValue = temperatureValueOff;
         }
         lcd.print(temperatureValue + String("*C  "));
@@ -142,7 +154,7 @@ void runMenuTemperature() {
         printIndicator(indicatorRowTemperature);
       } else if (temperatureSettingsLevel == 1) {
         lcd.setCursor(6,indicatorRowTemperature);
-        lcd.print(" *C  ");
+        lcd.print((indicatorRowTemperature == 2 ? temperatureValueOn : temperatureValueOff) + String("*C  "));
         if (indicatorRowTemperature == 2) {
           lcd.setCursor(3,indicatorRowTemperature);
         } else {
@@ -152,6 +164,8 @@ void runMenuTemperature() {
         printIndicator(indicatorRowTemperature, " ");
       }
     } else if (rotaryBtnState == 2) {
+      EEPROM_writeAnything(eepromTemperatureOn, temperatureValueOn);
+      EEPROM_writeAnything(eepromTemperatureOff, temperatureValueOff);
       screenExit = true;
       screenNumber = 1; // settings
     }
@@ -256,7 +270,8 @@ void runMenuSettings(bool reset = false) {
 void runHomeScreen() {
   lcd.clear();
   now = rtc.now();
-  byte workingModeValue = EEPROM.read(eepromWorkingModeAdr);
+  byte workingModeValue;
+  EEPROM_readAnything(eepromWorkingMode, workingModeValue);
   if (workingModeValue != 0 && workingModeValue != 1) workingModeValue = 0;
   
   while(!screenExit) {
@@ -291,7 +306,8 @@ void runHomeScreen() {
 }
 
 void runWorkingMode() {
-  byte savedValue = EEPROM.read(eepromWorkingModeAdr);
+  byte savedValue;
+  EEPROM_readAnything(eepromWorkingMode, savedValue);
   if (savedValue != 0 && savedValue != 1) savedValue = 0;
   short i = savedValue;
   lcd.clear();
@@ -326,7 +342,7 @@ void runWorkingMode() {
     
     if (rotaryBtnState == 2) {
       savedValue = i;
-      EEPROM.write(eepromWorkingModeAdr, savedValue);
+      EEPROM_writeAnything(eepromWorkingMode, savedValue);
       screenExit = true;
       screenNumber = 1;
     }
@@ -346,7 +362,17 @@ void setup() {
   
   Serial.begin(9600);  
   
+//  short temperatureValueOn;
+//  short temperatureValueOff;
+//  EEPROM_readAnything(eepromTemperatureOn, temperatureValueOn);
+//  EEPROM_readAnything(eepromTemperatureOff, temperatureValueOff);
+//EEPROM_writeAnything(eepromTemperatureOn, temperatureValueOn);
+//      EEPROM_writeAnything(eepromTemperatureOff, temperatureValueOff);
+
+//  Serial.println(temperatureValueOn);
+//  Serial.println(temperatureValueOff);
   runHomeScreen();
+
 }
 
 void loop() {
