@@ -182,7 +182,7 @@ void drawSettingsMenu() {
   }  
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("SETTINGS");
+  lcd.print(String("SETTINGS ") + (menuStart == 0 ? 1 : 2) + String("/2"));
   printIndicator(indicatorRow);
   short row=1;
   for (short menuItem=menuStart; menuItem<=menuEnd; menuItem++) {
