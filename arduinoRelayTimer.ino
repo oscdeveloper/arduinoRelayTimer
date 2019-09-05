@@ -53,6 +53,7 @@ unsigned short menuEnd = 2;
 short indicatorRow = 1;
 unsigned short indicatorRowMax = 3;
 char indicatorSign = 126;
+char degreeSign = 223;
 
 void printIndicator(short printIndicatorRow, String text = "") {
   lcd.setCursor(0,printIndicatorRow);
@@ -438,7 +439,9 @@ void runSettingsTemperature() {
     lcd.setCursor(1,row);
     lcd.print(onOffItemsUppercase[menuItem] + String(": "));
     lcd.setCursor(6,row);
-    lcd.print((menuItem == 0 ? temperatureValueOn : temperatureValueOff) + String("*C"));
+    lcd.print(menuItem == 0 ? temperatureValueOn : temperatureValueOff);
+    lcd.print(degreeSign);
+    lcd.print("C");
     row++;
   }
 
@@ -481,7 +484,9 @@ void runSettingsTemperature() {
           }
           temperatureValue = temperatureValueOff;
         }
-        lcd.print(temperatureValue + String("*C  "));
+        lcd.print(temperatureValue);
+        lcd.print(degreeSign);
+        lcd.print("C  ");
       } else if (rotaryState == 2) { // CCW
         if (indicatorRowTemperature == 2) {
           temperatureValueOn--;
@@ -496,7 +501,9 @@ void runSettingsTemperature() {
           }
           temperatureValue = temperatureValueOff;
         }
-        lcd.print(temperatureValue + String("*C  "));
+        lcd.print(temperatureValue);
+        lcd.print(degreeSign);
+        lcd.print("C  ");
       }
       
       lcd.setCursor(6,indicatorRowTemperature);      
@@ -515,7 +522,9 @@ void runSettingsTemperature() {
         printIndicator(indicatorRowTemperature);
       } else if (temperatureSettingsLevel == 1) {
         lcd.setCursor(6,indicatorRowTemperature);
-        lcd.print((indicatorRowTemperature == 2 ? temperatureValueOn : temperatureValueOff) + String("*C  "));
+        lcd.print(indicatorRowTemperature == 2 ? temperatureValueOn : temperatureValueOff);
+        lcd.print(degreeSign);
+        lcd.print("C  ");
         if (indicatorRowTemperature == 2) {
           lcd.setCursor(3,indicatorRowTemperature);
         } else {
