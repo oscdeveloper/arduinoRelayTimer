@@ -43,6 +43,7 @@ String workingMode[] = {"Temperature", "Interval"};
 String workingModeUppercase[] = {"TEMPERATURE", "INTERVAL"};
 String settingsMenu[] = {"Clock Date/Time", "Working Mode", "Working Hours", "Interval", "Temperature"};
 String onOffItemsUppercase[] = {"ON", "OFF"};
+String dateTimeItems[] = {"Date", "Time"};
 //byte settingsMenuItemsSize = sizeof(settingsMenuItems[1]) / sizeof(settingsMenuItems[1][0]);
 
 bool resetSettingsMenu = true;
@@ -67,6 +68,194 @@ void printIndicator(short printIndicatorRow, String text = "") {
 String formatDateNumber(int number) {
   String formattedNumber = String(number);
   return number < 10 ? "0" + formattedNumber : formattedNumber;
+}
+
+void runSettingsClock() {
+  now = rtc.now();
+  unsigned short indicatorRowClock = 2;
+  byte clockSettingsLevel = 0;
+  short clockValue;
+  short clockHValue = now.hour();
+  short clockMValue = now.minute();
+  short clockDayValue = now.day();
+  short clockMonthValue = now.month();
+  short clockYearValue = now.year();
+  
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("SET CLOCK");
+  printIndicator(indicatorRowClock);
+  short row=2;
+  for (short menuItem=0; menuItem<=1; menuItem++) {
+    lcd.setCursor(1,row);
+    lcd.print(dateTimeItems[menuItem] + String(": "));
+    lcd.setCursor(7,row);
+    if (row == 2) {
+      lcd.print(formatDateNumber(clockDayValue) + String("/") + formatDateNumber(clockMonthValue) + String("/") + formatDateNumber(clockYearValue));
+    } else if (row == 3) {
+      lcd.print(formatDateNumber(clockHValue) + String(":") + formatDateNumber(clockMValue));
+    }
+    row++;
+  }
+
+  lcd.setCursor(6,indicatorRowClock);
+
+  while(!screenExit) {
+    
+    rotaryBtnState = rotary.pushType(700);
+    rotaryState = rotary.rotate();
+
+    if (clockSettingsLevel == 0) { // on/off menu
+      if (rotaryState == 1) { // CW
+        printIndicator(indicatorRowClock, " ");
+        indicatorRowClock++;
+        if (indicatorRowClock > 3) {
+          indicatorRowClock = 2;
+        }      
+        printIndicator(indicatorRowClock);
+      } else if (rotaryState == 2) { // CCW
+        printIndicator(indicatorRowClock, " ");
+        indicatorRowClock--;
+        if (indicatorRowClock < 2) {
+          indicatorRowClock = 3;
+        }      
+        printIndicator(indicatorRowClock);
+      }
+    } else if (clockSettingsLevel == 1) { // Day or Hour
+      if (rotaryState == 1) { // CW
+        if (indicatorRowClock == 2) { // Day
+          clockDayValue++;
+          if (clockDayValue > 31) {
+            clockDayValue = 1;
+          }
+          clockValue = clockDayValue;
+        } else if (indicatorRowClock == 3) { // HH
+          clockHValue++;
+          if (clockHValue > 23) {
+            clockHValue = 0;
+          }
+          clockValue = clockHValue;
+        }
+        lcd.setCursor(7,indicatorRowClock);        
+        lcd.print(formatDateNumber(clockValue));
+      } else if (rotaryState == 2) { // CCW
+        if (indicatorRowClock == 2) { // Day
+          clockDayValue--;
+          if (clockDayValue < 1) {
+            clockDayValue = 31;
+          }
+          clockValue = clockDayValue;
+        } else if (indicatorRowClock == 3) { // Hour
+          clockHValue--;
+          if (clockHValue < 0) {
+            clockHValue = 23;
+          }
+          clockValue = clockHValue;
+        }
+        lcd.setCursor(7,indicatorRowClock);        
+        lcd.print(formatDateNumber(clockValue));
+      }     
+    } else if (clockSettingsLevel == 2) { // Month or Minute
+      if (rotaryState == 1) { // CW
+        if (indicatorRowClock == 2) { // Month
+          clockMonthValue++;
+          if (clockMonthValue > 12) {
+            clockMonthValue = 1;
+          }
+          clockValue = clockMonthValue;
+        } else if (indicatorRowClock == 3) { // Minute
+          clockMValue++;
+          if (clockMValue > 59) {
+            clockMValue = 0;
+          }
+          clockValue = clockMValue;
+        }    
+        lcd.setCursor(10,indicatorRowClock);        
+        lcd.print(formatDateNumber(clockValue)); 
+      } else if (rotaryState == 2) { // CCW
+        if (indicatorRowClock == 2) { // Month
+          clockMonthValue--;
+          if (clockMonthValue < 1) {
+            clockMonthValue = 12;
+          }
+          clockValue = clockMonthValue;
+        } else if (indicatorRowClock == 3) { // Minute
+          clockMValue--;
+          if (clockMValue < 0) {
+            clockMValue = 59;
+          }
+          clockValue = clockMValue;
+        }    
+        lcd.setCursor(10,indicatorRowClock);        
+        lcd.print(formatDateNumber(clockValue)); 
+      }     
+    } else if (clockSettingsLevel == 3) { // Year
+      if (rotaryState == 1) { // CW
+        clockYearValue++;
+        if (clockYearValue > 2099) {
+          clockYearValue = 2000;
+        }
+        clockValue = clockYearValue;
+        lcd.setCursor(13,indicatorRowClock);        
+        lcd.print(formatDateNumber(clockValue)); 
+      } else if (rotaryState == 2) { // CCW
+        clockYearValue--;
+        if (clockYearValue < 2000) {
+          clockYearValue = 2099;
+        }
+        clockValue = clockYearValue;
+        lcd.setCursor(13,indicatorRowClock);        
+        lcd.print(formatDateNumber(clockValue)); 
+      }     
+    }
+
+    if (rotaryBtnState == 1) {
+      clockSettingsLevel++;
+      if (indicatorRowClock == 2) {
+        if (clockSettingsLevel == 1) { // Day
+          lcd.setCursor(6,indicatorRowClock);        
+          lcd.print(indicatorSign);
+          printIndicator(indicatorRowClock, " ");
+        } else if (clockSettingsLevel == 2) { // Month
+          lcd.setCursor(9,indicatorRowClock);  
+          lcd.print(indicatorSign);
+          lcd.setCursor(6,indicatorRowClock);
+          lcd.print(" ");
+        } else if (clockSettingsLevel == 3) { // Year
+          lcd.setCursor(12,indicatorRowClock);  
+          lcd.print(indicatorSign);
+          lcd.setCursor(9,indicatorRowClock);
+          lcd.print("/");
+        } else if (clockSettingsLevel > 3) { // back to date/time menu
+          clockSettingsLevel = 0; 
+          lcd.setCursor(12,indicatorRowClock);  
+          lcd.print("/");
+          printIndicator(indicatorRowClock);
+        }             
+      } else if (indicatorRowClock == 3) {
+        if (clockSettingsLevel == 1) { // HH
+          lcd.setCursor(6,indicatorRowClock);        
+          lcd.print(indicatorSign);
+          printIndicator(indicatorRowClock, " ");
+        } else if (clockSettingsLevel == 2) { // MM
+          lcd.setCursor(9,indicatorRowClock);  
+          lcd.print(indicatorSign);
+          lcd.setCursor(6,indicatorRowClock);
+          lcd.print(" ");
+        } else if (clockSettingsLevel > 2) { // back to date/time menu
+          clockSettingsLevel = 0; 
+          lcd.setCursor(9,indicatorRowClock);  
+          lcd.print(":");
+          printIndicator(indicatorRowClock);
+        } 
+      }
+    } else if (rotaryBtnState == 2) {
+      RTC_DS1307::adjust(DateTime(clockYearValue, clockMonthValue, clockDayValue, clockHValue, clockMValue, 0));
+//      (uint16_t year, uint8_t month, uint8_t day, uint8_t hour = 0, uint8_t min = 0, uint8_t sec = 0);
+      screenExit = true;
+      screenNumber = 1; // settings
+    }    
+  }
 }
 
 void runSettingsInterval() {
@@ -612,7 +801,7 @@ void runMenuSettings(bool reset = false) {
       if (menuStart == 0) {
         switch (indicatorRow) {
           case 1:
-            screenNumber = 0; // home
+            screenNumber = 6; // clock
             break;
           case 2:
             screenNumber = 2; // working mode
@@ -784,6 +973,9 @@ void loop() {
       break;
     case 5:
       runSettingsInterval();
+      break;
+    case 6:
+      runSettingsClock();
       break;
   }
 }
