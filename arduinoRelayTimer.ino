@@ -21,6 +21,16 @@ byte rotaryBtnLongState;
 byte eepromWorkingMode = 0;
 byte eepromTemperatureOn = 1; // 1-2
 byte eepromTemperatureOff = 3; // 3-4
+byte eepromWorkingHoursOnH = 5; // 5-6
+byte eepromWorkingHoursOnM = 7; // 7-8
+byte eepromWorkingHoursOffH = 9; // 9-10
+byte eepromWorkingHoursOffM = 11; // 11-12
+byte eepromIntervalOnH = 13; // 13-14
+byte eepromIntervalOnM = 15; // 15-16
+byte eepromIntervalOnS = 17; // 17-18
+byte eepromIntervalOffH = 19; // 19-20
+byte eepromIntervalOffM = 21; // 21-22
+byte eepromIntervalOffS = 23; // 23-24
 
 //unsigned long previousMillis = 0;
 //unsigned long previousMillis2 = 0;
@@ -58,7 +68,164 @@ String formatDateNumber(int number) {
   return number < 10 ? "0" + formattedNumber : formattedNumber;
 }
 
-void runMenuTemperature() {
+void runSettingsInterval() {
+  
+}
+
+void runSettingsWorkingHours() {
+  unsigned short indicatorRowWorkingHours = 2;
+  byte workingHoursSettingsLevel = 0;
+  short workingHoursValue;
+  short workingHoursOnHValue;
+  short workingHoursOnMValue;
+  short workingHoursOffHValue;
+  short workingHoursOffMValue;
+  EEPROM_readAnything(eepromWorkingHoursOnH, workingHoursOnHValue);
+  EEPROM_readAnything(eepromWorkingHoursOnM, workingHoursOnMValue);
+  EEPROM_readAnything(eepromWorkingHoursOffH, workingHoursOffHValue);
+  EEPROM_readAnything(eepromWorkingHoursOffM, workingHoursOffMValue);
+  
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("SET WORKING HOURS");
+  lcd.setCursor(6,1);
+  lcd.print("HH:MM");
+  printIndicator(indicatorRowWorkingHours);
+  short row=2;
+  for (short menuItem=0; menuItem<=1; menuItem++) {
+    lcd.setCursor(1,row);
+    lcd.print(onOffItemsUppercase[menuItem] + String(": "));
+    lcd.setCursor(6,row);
+    if (row == 2) {
+      lcd.print(formatDateNumber(workingHoursOnHValue) + String(":") + formatDateNumber(workingHoursOnMValue));
+    } else if (row == 3) {
+      lcd.print(formatDateNumber(workingHoursOffHValue) + String(":") + formatDateNumber(workingHoursOffMValue));
+    }
+    row++;
+  }
+
+  lcd.setCursor(6,indicatorRowWorkingHours);
+
+  while(!screenExit) {
+    
+    rotaryBtnState = rotary.pushType(700);
+    rotaryState = rotary.rotate();
+
+    if (workingHoursSettingsLevel == 0) { // on/off menu
+      if (rotaryState == 1) { // CW
+        printIndicator(indicatorRowWorkingHours, " ");
+        indicatorRowWorkingHours++;
+        if (indicatorRowWorkingHours > 3) {
+          indicatorRowWorkingHours = 2;
+        }      
+        printIndicator(indicatorRowWorkingHours);
+      } else if (rotaryState == 2) { // CCW
+        printIndicator(indicatorRowWorkingHours, " ");
+        indicatorRowWorkingHours--;
+        if (indicatorRowWorkingHours < 2) {
+          indicatorRowWorkingHours = 3;
+        }      
+        printIndicator(indicatorRowWorkingHours);
+      }
+    } else if (workingHoursSettingsLevel == 1) { // HH
+      if (rotaryState == 1) { // CW
+        if (indicatorRowWorkingHours == 2) {
+          workingHoursOnHValue++;
+          if (workingHoursOnHValue > 23) {
+            workingHoursOnHValue = 0;
+          }
+          workingHoursValue = workingHoursOnHValue;
+        } else if (indicatorRowWorkingHours == 3) {
+          workingHoursOffHValue++;
+          if (workingHoursOffHValue > 23) {
+            workingHoursOffHValue = 0;
+          }
+          workingHoursValue = workingHoursOffHValue;
+        }
+        lcd.setCursor(6,indicatorRowWorkingHours);        
+        lcd.print(formatDateNumber(workingHoursValue));
+      } else if (rotaryState == 2) { // CCW
+        if (indicatorRowWorkingHours == 2) {
+          workingHoursOnHValue--;
+          if (workingHoursOnHValue < 0) {
+            workingHoursOnHValue = 23;
+          }
+          workingHoursValue = workingHoursOnHValue;
+        } else if (indicatorRowWorkingHours == 3) {
+          workingHoursOffHValue--;
+          if (workingHoursOffHValue < 0) {
+            workingHoursOffHValue = 23;
+          }
+          workingHoursValue = workingHoursOffHValue;
+        }
+        lcd.setCursor(6,indicatorRowWorkingHours);        
+        lcd.print(formatDateNumber(workingHoursValue));
+      }     
+    } else if (workingHoursSettingsLevel == 2) { // MM
+      if (rotaryState == 1) { // CW
+        if (indicatorRowWorkingHours == 2) {
+          workingHoursOnMValue++;
+          if (workingHoursOnMValue > 59) {
+            workingHoursOnMValue = 0;
+          }
+          workingHoursValue = workingHoursOnMValue;
+        } else if (indicatorRowWorkingHours == 3) {
+          workingHoursOffMValue++;
+          if (workingHoursOffMValue > 59) {
+            workingHoursOffMValue = 0;
+          }
+          workingHoursValue = workingHoursOffMValue;
+        }    
+        lcd.setCursor(9,indicatorRowWorkingHours);        
+        lcd.print(formatDateNumber(workingHoursValue)); 
+      } else if (rotaryState == 2) { // CCW
+        if (indicatorRowWorkingHours == 2) {
+          workingHoursOnMValue--;
+          if (workingHoursOnMValue < 0) {
+            workingHoursOnMValue = 59;
+          }
+          workingHoursValue = workingHoursOnMValue;
+        } else if (indicatorRowWorkingHours == 3) {
+          workingHoursOffMValue--;
+          if (workingHoursOffMValue < 0) {
+            workingHoursOffMValue = 59;
+          }
+          workingHoursValue = workingHoursOffMValue;
+        }    
+        lcd.setCursor(9,indicatorRowWorkingHours);        
+        lcd.print(formatDateNumber(workingHoursValue)); 
+      }     
+    }
+
+    if (rotaryBtnState == 1) {
+      workingHoursSettingsLevel++;
+      if (workingHoursSettingsLevel == 1) { // HH
+        lcd.setCursor(5,indicatorRowWorkingHours);        
+        lcd.print(indicatorSign);
+        printIndicator(indicatorRowWorkingHours, " ");
+      } else if (workingHoursSettingsLevel == 2) { // MM
+        lcd.setCursor(8,indicatorRowWorkingHours);  
+        lcd.print(indicatorSign);
+        lcd.setCursor(5,indicatorRowWorkingHours);
+        lcd.print(" ");
+      } else if (workingHoursSettingsLevel > 2) { // back to on/off menu
+        workingHoursSettingsLevel = 0; 
+        lcd.setCursor(8,indicatorRowWorkingHours);  
+        lcd.print(":");
+        printIndicator(indicatorRowWorkingHours);
+      }
+    } else if (rotaryBtnState == 2) {
+      EEPROM_writeAnything(eepromWorkingHoursOnH, workingHoursOnHValue);
+      EEPROM_writeAnything(eepromWorkingHoursOnM, workingHoursOnMValue);
+      EEPROM_writeAnything(eepromWorkingHoursOffH, workingHoursOffHValue);
+      EEPROM_writeAnything(eepromWorkingHoursOffM, workingHoursOffMValue);
+      screenExit = true;
+      screenNumber = 1; // settings
+    }    
+  }
+}
+
+void runSettingsTemperature() {
   unsigned short indicatorRowTemperature = 2;
   byte temperatureSettingsLevel = 0;
   short temperatureValue = 0;
@@ -245,13 +412,16 @@ void runMenuSettings(bool reset = false) {
             screenNumber = 0; // home
             break;
           case 2:
-            screenNumber = 2; // working type
+            screenNumber = 2; // working mode
+            break;
+          case 3:
+            screenNumber = 4; // working hours
             break;
         }
       } else if (menuStart == 3) {
         switch (indicatorRow) {
           case 1:
-            screenNumber = 0; // interval
+            screenNumber = 5; // interval
             break;
           case 2:
             screenNumber = 3; // temperature
@@ -269,13 +439,14 @@ void runMenuSettings(bool reset = false) {
 
 void runHomeScreen() {
   lcd.clear();
-  now = rtc.now();
   byte workingModeValue;
   EEPROM_readAnything(eepromWorkingMode, workingModeValue);
-  if (workingModeValue != 0 && workingModeValue != 1) workingModeValue = 0;
+  // TODO add on steup initial value if it's empty in eeprom
   
   while(!screenExit) {
 
+    now = rtc.now();
+    
     rotaryBtnState = rotary.pushType(700);
     rotaryState = rotary.rotate();
     
@@ -305,18 +476,18 @@ void runHomeScreen() {
   }
 }
 
-void runWorkingMode() {
-  byte savedValue;
-  EEPROM_readAnything(eepromWorkingMode, savedValue);
-  if (savedValue != 0 && savedValue != 1) savedValue = 0;
-  short i = savedValue;
+void runSettingsWorkingMode() {
+  byte workingModeValue;
+  EEPROM_readAnything(eepromWorkingMode, workingModeValue);
+
+  short i = workingModeValue;
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("SET WORKING MODE");
   lcd.setCursor(0,2);
   lcd.print("Mode: ");
   lcd.setCursor(6,2);
-  lcd.print(workingMode[savedValue]);
+  lcd.print(workingMode[workingModeValue]);
 
   while(!screenExit) {
     
@@ -341,8 +512,8 @@ void runWorkingMode() {
     }
     
     if (rotaryBtnState == 2) {
-      savedValue = i;
-      EEPROM_writeAnything(eepromWorkingMode, savedValue);
+      workingModeValue = i;
+      EEPROM_writeAnything(eepromWorkingMode, workingModeValue);
       screenExit = true;
       screenNumber = 1;
     }
@@ -361,6 +532,11 @@ void setup() {
 //  rotary.setDebounceDelay(5);
   
   Serial.begin(9600);  
+
+//      EEPROM_writeAnything(eepromWorkingHoursOnH, 0);
+//      EEPROM_writeAnything(eepromWorkingHoursOnM, 0);
+//      EEPROM_writeAnything(eepromWorkingHoursOffH, 0);
+//      EEPROM_writeAnything(eepromWorkingHoursOffM, 0);
   
 //  short temperatureValueOn;
 //  short temperatureValueOff;
@@ -388,10 +564,16 @@ void loop() {
       runMenuSettings();
       break;
     case 2:
-      runWorkingMode();
+      runSettingsWorkingMode();
       break;
     case 3:
-      runMenuTemperature();
+      runSettingsTemperature();
+      break;
+    case 4:
+      runSettingsWorkingHours();
+      break;
+    case 5:
+      runSettingsInterval();
       break;
   }
 }
