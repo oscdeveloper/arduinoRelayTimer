@@ -69,7 +69,201 @@ String formatDateNumber(int number) {
 }
 
 void runSettingsInterval() {
+  unsigned short indicatorRowInterval = 2;
+  byte intervalSettingsLevel = 0;
+  short intervalValue;
+  short intervalOnHValue;
+  short intervalOnMValue;
+  short intervalOnSValue;
+  short intervalOffHValue;
+  short intervalOffMValue;
+  short intervalOffSValue;
+  EEPROM_readAnything(eepromIntervalOnH, intervalOnHValue);
+  EEPROM_readAnything(eepromIntervalOnM, intervalOnMValue);
+  EEPROM_readAnything(eepromIntervalOnS, intervalOnSValue);
+  EEPROM_readAnything(eepromIntervalOffH, intervalOffHValue);
+  EEPROM_readAnything(eepromIntervalOffM, intervalOffMValue);
+  EEPROM_readAnything(eepromIntervalOffS, intervalOffSValue);
   
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("SET INTERVAL");
+  lcd.setCursor(6,1);
+  lcd.print("HH:MM:SS");
+  printIndicator(indicatorRowInterval);
+  short row=2;
+  for (short menuItem=0; menuItem<=1; menuItem++) {
+    lcd.setCursor(1,row);
+    lcd.print(onOffItemsUppercase[menuItem] + String(": "));
+    lcd.setCursor(6,row);
+    if (row == 2) {
+      lcd.print(formatDateNumber(intervalOnHValue) + String(":") + formatDateNumber(intervalOnMValue) + String(":") + formatDateNumber(intervalOnSValue));
+    } else if (row == 3) {
+      lcd.print(formatDateNumber(intervalOffHValue) + String(":") + formatDateNumber(intervalOffMValue) + String(":") + formatDateNumber(intervalOffSValue));
+    }
+    row++;
+  }
+
+  lcd.setCursor(6,indicatorRowInterval);
+
+  while(!screenExit) {
+    
+    rotaryBtnState = rotary.pushType(700);
+    rotaryState = rotary.rotate();
+
+    if (intervalSettingsLevel == 0) { // on/off menu
+      if (rotaryState == 1) { // CW
+        printIndicator(indicatorRowInterval, " ");
+        indicatorRowInterval++;
+        if (indicatorRowInterval > 3) {
+          indicatorRowInterval = 2;
+        }      
+        printIndicator(indicatorRowInterval);
+      } else if (rotaryState == 2) { // CCW
+        printIndicator(indicatorRowInterval, " ");
+        indicatorRowInterval--;
+        if (indicatorRowInterval < 2) {
+          indicatorRowInterval = 3;
+        }      
+        printIndicator(indicatorRowInterval);
+      }
+    } else if (intervalSettingsLevel == 1) { // HH
+      if (rotaryState == 1) { // CW
+        if (indicatorRowInterval == 2) {
+          intervalOnHValue++;
+          if (intervalOnHValue > 23) {
+            intervalOnHValue = 0;
+          }
+          intervalValue = intervalOnHValue;
+        } else if (indicatorRowInterval == 3) {
+          intervalOffHValue++;
+          if (intervalOffHValue > 23) {
+            intervalOffHValue = 0;
+          }
+          intervalValue = intervalOffHValue;
+        }
+        lcd.setCursor(6,indicatorRowInterval);        
+        lcd.print(formatDateNumber(intervalValue));
+      } else if (rotaryState == 2) { // CCW
+        if (indicatorRowInterval == 2) {
+          intervalOnHValue--;
+          if (intervalOnHValue < 0) {
+            intervalOnHValue = 23;
+          }
+          intervalValue = intervalOnHValue;
+        } else if (indicatorRowInterval == 3) {
+          intervalOffHValue--;
+          if (intervalOffHValue < 0) {
+            intervalOffHValue = 23;
+          }
+          intervalValue = intervalOffHValue;
+        }
+        lcd.setCursor(6,indicatorRowInterval);        
+        lcd.print(formatDateNumber(intervalValue));
+      }     
+    } else if (intervalSettingsLevel == 2) { // MM
+      if (rotaryState == 1) { // CW
+        if (indicatorRowInterval == 2) {
+          intervalOnMValue++;
+          if (intervalOnMValue > 59) {
+            intervalOnMValue = 0;
+          }
+          intervalValue = intervalOnMValue;
+        } else if (indicatorRowInterval == 3) {
+          intervalOffMValue++;
+          if (intervalOffMValue > 59) {
+            intervalOffMValue = 0;
+          }
+          intervalValue = intervalOffMValue;
+        }    
+        lcd.setCursor(9,indicatorRowInterval);        
+        lcd.print(formatDateNumber(intervalValue)); 
+      } else if (rotaryState == 2) { // CCW
+        if (indicatorRowInterval == 2) {
+          intervalOnMValue--;
+          if (intervalOnMValue < 0) {
+            intervalOnMValue = 59;
+          }
+          intervalValue = intervalOnMValue;
+        } else if (indicatorRowInterval == 3) {
+          intervalOffMValue--;
+          if (intervalOffMValue < 0) {
+            intervalOffMValue = 59;
+          }
+          intervalValue = intervalOffMValue;
+        }    
+        lcd.setCursor(9,indicatorRowInterval);        
+        lcd.print(formatDateNumber(intervalValue)); 
+      }     
+    } else if (intervalSettingsLevel == 3) { // SS
+      if (rotaryState == 1) { // CW
+        if (indicatorRowInterval == 2) {
+          intervalOnSValue++;
+          if (intervalOnSValue > 59) {
+            intervalOnSValue = 0;
+          }
+          intervalValue = intervalOnSValue;
+        } else if (indicatorRowInterval == 3) {
+          intervalOffSValue++;
+          if (intervalOffSValue > 59) {
+            intervalOffSValue = 0;
+          }
+          intervalValue = intervalOffSValue;
+        }    
+        lcd.setCursor(12,indicatorRowInterval);        
+        lcd.print(formatDateNumber(intervalValue)); 
+      } else if (rotaryState == 2) { // CCW
+        if (indicatorRowInterval == 2) {
+          intervalOnSValue--;
+          if (intervalOnSValue < 0) {
+            intervalOnSValue = 59;
+          }
+          intervalValue = intervalOnSValue;
+        } else if (indicatorRowInterval == 3) {
+          intervalOffSValue--;
+          if (intervalOffSValue < 0) {
+            intervalOffSValue = 59;
+          }
+          intervalValue = intervalOffSValue;
+        }    
+        lcd.setCursor(12,indicatorRowInterval);        
+        lcd.print(formatDateNumber(intervalValue)); 
+      }     
+    }
+
+    if (rotaryBtnState == 1) {
+      intervalSettingsLevel++;
+      if (intervalSettingsLevel == 1) { // HH
+        lcd.setCursor(5,indicatorRowInterval);        
+        lcd.print(indicatorSign);
+        printIndicator(indicatorRowInterval, " ");
+      } else if (intervalSettingsLevel == 2) { // MM
+        lcd.setCursor(8,indicatorRowInterval);  
+        lcd.print(indicatorSign);
+        lcd.setCursor(5,indicatorRowInterval);
+        lcd.print(" ");
+      } else if (intervalSettingsLevel == 3) { // SS
+        lcd.setCursor(11,indicatorRowInterval);  
+        lcd.print(indicatorSign);
+        lcd.setCursor(8,indicatorRowInterval);
+        lcd.print(":");
+      } else if (intervalSettingsLevel > 3) { // back to on/off menu
+        intervalSettingsLevel = 0; 
+        lcd.setCursor(11,indicatorRowInterval);  
+        lcd.print(":");
+        printIndicator(indicatorRowInterval);
+      }
+    } else if (rotaryBtnState == 2) {
+      EEPROM_writeAnything(eepromIntervalOnH, intervalOnHValue);
+      EEPROM_writeAnything(eepromIntervalOnM, intervalOnMValue);
+      EEPROM_writeAnything(eepromIntervalOnS, intervalOnSValue);
+      EEPROM_writeAnything(eepromIntervalOffH, intervalOffHValue);
+      EEPROM_writeAnything(eepromIntervalOffM, intervalOffMValue);
+      EEPROM_writeAnything(eepromIntervalOffS, intervalOffSValue);
+      screenExit = true;
+      screenNumber = 1; // settings
+    }    
+  }
 }
 
 void runSettingsWorkingHours() {
@@ -532,6 +726,13 @@ void setup() {
 //  rotary.setDebounceDelay(5);
   
   Serial.begin(9600);  
+
+//      EEPROM_writeAnything(eepromIntervalOnH, 0);
+//      EEPROM_writeAnything(eepromIntervalOnM, 0);
+//      EEPROM_writeAnything(eepromIntervalOnS, 0);
+//      EEPROM_writeAnything(eepromIntervalOffH, 0);
+//      EEPROM_writeAnything(eepromIntervalOffM, 0);
+//      EEPROM_writeAnything(eepromIntervalOffS, 0);
 
 //      EEPROM_writeAnything(eepromWorkingHoursOnH, 0);
 //      EEPROM_writeAnything(eepromWorkingHoursOnM, 0);
