@@ -39,13 +39,18 @@ byte eepromIntervalOffS = 23; // 23-24
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 DateTime now;
 
+byte workingModeValue = 3;
 String workingMode[] = {"Temperature", "Interval"};
 String workingModeUppercase[] = {"TEMPERATURE", "INTERVAL"};
 String settingsMenu[] = {"Clock Date/Time", "Working Mode", "Working Hours", "Interval", "Temperature"};
 String onOffItemsUppercase[] = {"ON", "OFF"};
 String dateTimeItems[] = {"Date", "Time"};
-//byte settingsMenuItemsSize = sizeof(settingsMenuItems[1]) / sizeof(settingsMenuItems[1][0]);
+byte homeScreens[2][3] = {
+ {0,7,9}, // temperature
+ {0,8,9} // interval
+};
 
+short homeScreenNumber = 0;
 bool resetSettingsMenu = true;
 byte screenNumber = 1;
 bool screenExit = false;
@@ -251,7 +256,6 @@ void runSettingsClock() {
       }
     } else if (rotaryBtnState == 2) {
       RTC_DS1307::adjust(DateTime(clockYearValue, clockMonthValue, clockDayValue, clockHValue, clockMValue, 0));
-//      (uint16_t year, uint8_t month, uint8_t day, uint8_t hour = 0, uint8_t min = 0, uint8_t sec = 0);
       screenExit = true;
       screenNumber = 1; // settings
     }    
@@ -829,47 +833,7 @@ void runMenuSettings(bool reset = false) {
   }
 }
 
-void runHomeScreen() {
-  lcd.clear();
-  byte workingModeValue;
-  EEPROM_readAnything(eepromWorkingMode, workingModeValue);
-  // TODO add on steup initial value if it's empty in eeprom
-  
-  while(!screenExit) {
-
-    now = rtc.now();
-    
-    rotaryBtnState = rotary.pushType(700);
-    rotaryState = rotary.rotate();
-    
-    lcd.setCursor(6,0);
-    lcd.print(
-      formatDateNumber(now.hour())
-      + String(":")
-      + formatDateNumber(now.minute())
-      + String(":")
-      + formatDateNumber(now.second()));
-    lcd.setCursor(0,1);
-    lcd.print(daysOfTheWeek[now.dayOfTheWeek()]);
-    lcd.setCursor(10,1);
-    lcd.print(
-      formatDateNumber(now.day())
-      + String("/")
-      + formatDateNumber(now.month())
-      + String("/")
-      + now.year());      
-    workingModeValue ? lcd.setCursor(3,3) : lcd.setCursor(2,3);
-    lcd.print(workingModeUppercase[workingModeValue] + String(" MODE"));
-
-    if (rotaryBtnState == 2) {
-      screenExit = true;
-      screenNumber = 1; // settings
-    }
-  }
-}
-
 void runSettingsWorkingMode() {
-  byte workingModeValue;
   EEPROM_readAnything(eepromWorkingMode, workingModeValue);
 
   short i = workingModeValue;
@@ -912,42 +876,109 @@ void runSettingsWorkingMode() {
   }
 }
 
+void runHomeScreen() {
+  lcd.clear();
+  // TODO add on steup initial value if it's empty in eeprom
+
+  workingModeValue ? lcd.setCursor(3,3) : lcd.setCursor(2,3);
+  lcd.print(workingModeUppercase[workingModeValue] + String(" MODE"));
+  
+  while(!screenExit) {
+
+    now = rtc.now();
+        
+    lcd.setCursor(6,0);
+    lcd.print(
+      formatDateNumber(now.hour())
+      + String(":")
+      + formatDateNumber(now.minute())
+      + String(":")
+      + formatDateNumber(now.second()));
+    lcd.setCursor(0,1);
+    lcd.print(daysOfTheWeek[now.dayOfTheWeek()]);
+    lcd.setCursor(10,1);
+    lcd.print(
+      formatDateNumber(now.day())
+      + String("/")
+      + formatDateNumber(now.month())
+      + String("/")
+      + now.year());          
+
+    homeScreenSwitch();
+  }
+}
+
+void runTemperature() {  
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("runTemperature");
+
+  while(!screenExit) {
+    homeScreenSwitch();
+  }
+}
+
+void runInterval() {
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("runInterval");
+
+  while(!screenExit) {
+    homeScreenSwitch();
+  }
+}
+
+void runWorkingHours() {
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("runWorkingHours");
+
+  while(!screenExit) {
+    homeScreenSwitch();
+  }  
+}
+
+void homeScreenSwitch() {
+  
+  rotaryBtnState = rotary.pushType(700);
+  rotaryState = rotary.rotate();
+
+  if (rotaryState == 1) { // CW
+    homeScreenNumber++;
+    if (homeScreenNumber > 2) {
+      homeScreenNumber = 0;
+    }
+  } else if (rotaryState == 2) { // CCW
+    homeScreenNumber--;
+    if (homeScreenNumber < 0) {
+      homeScreenNumber = 2;
+    }
+  }
+
+  if (rotaryState > 0) {
+    screenNumber = homeScreens[workingModeValue][homeScreenNumber];
+    screenExit = true;
+  }
+      
+  if (rotaryBtnState == 2) {
+    screenExit = true;
+    screenNumber = 1; // settings
+  } 
+}
 
 
 void setup() {
  
   lcd.init();
   lcd.noBacklight();
-
-//  rotary.setTrigger(HIGH);
-//  rotary.setErrorDelay(0);
-//  rotary.setDebounceDelay(5);
-  
+ 
   Serial.begin(9600);  
 
-//      EEPROM_writeAnything(eepromIntervalOnH, 0);
-//      EEPROM_writeAnything(eepromIntervalOnM, 0);
-//      EEPROM_writeAnything(eepromIntervalOnS, 0);
-//      EEPROM_writeAnything(eepromIntervalOffH, 0);
-//      EEPROM_writeAnything(eepromIntervalOffM, 0);
-//      EEPROM_writeAnything(eepromIntervalOffS, 0);
-
-//      EEPROM_writeAnything(eepromWorkingHoursOnH, 0);
-//      EEPROM_writeAnything(eepromWorkingHoursOnM, 0);
-//      EEPROM_writeAnything(eepromWorkingHoursOffH, 0);
-//      EEPROM_writeAnything(eepromWorkingHoursOffM, 0);
+  if (workingModeValue == 3) {
+    EEPROM_readAnything(eepromWorkingMode, workingModeValue);
+  }
   
-//  short temperatureValueOn;
-//  short temperatureValueOff;
-//  EEPROM_readAnything(eepromTemperatureOn, temperatureValueOn);
-//  EEPROM_readAnything(eepromTemperatureOff, temperatureValueOff);
-//EEPROM_writeAnything(eepromTemperatureOn, temperatureValueOn);
-//      EEPROM_writeAnything(eepromTemperatureOff, temperatureValueOff);
-
-//  Serial.println(temperatureValueOn);
-//  Serial.println(temperatureValueOff);
   runHomeScreen();
-
 }
 
 void loop() {
@@ -977,7 +1008,17 @@ void loop() {
     case 6:
       runSettingsClock();
       break;
+    case 7:
+      runTemperature();
+      break;
+    case 8:
+      runInterval();
+      break;
+    case 9:
+      runWorkingHours();
+      break;
   }
+// byte homeScreensNumber[] = {0,7,8,9};
 }
 
 
