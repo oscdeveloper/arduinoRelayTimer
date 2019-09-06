@@ -61,6 +61,8 @@ unsigned short indicatorRowMax = 3;
 char indicatorSign = 126;
 char degreeSign = 223;
 
+short temperatureValueOn;
+short temperatureValueOff;
 short workingHoursOnHValue;
 short workingHoursOnMValue;
 short workingHoursOffHValue;
@@ -473,8 +475,6 @@ void runSettingsWorkingHours() {
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("SET WORKING HOURS");
-  lcd.setCursor(6,1);
-  lcd.print("HH:MM");
   printIndicator(indicatorRowWorkingHours);
   short row=2;
   for (short menuItem=0; menuItem<=1; menuItem++) {
@@ -614,11 +614,6 @@ void runSettingsTemperature() {
   unsigned short indicatorRowTemperature = 2;
   byte temperatureSettingsLevel = 0;
   short temperatureValue = 0;
-  short temperatureValueOn;
-  short temperatureValueOff;
-  EEPROM_readAnything(eepromTemperatureOn, temperatureValueOn);
-  EEPROM_readAnything(eepromTemperatureOff, temperatureValueOff);
-  // TODO add to setup initial values to eeprom, ex. zero
   
   lcd.clear();
   lcd.setCursor(0,0);
@@ -906,7 +901,23 @@ void runHomeScreen() {
 void runTemperature() {  
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("runTemperature");
+  lcd.print("Temp now:");
+  lcd.setCursor(10,0);
+  lcd.print(0);
+  lcd.print(degreeSign);
+  lcd.print("C");
+  lcd.setCursor(0,2);
+  lcd.print("Temp on:");
+  lcd.setCursor(10,2);
+  lcd.print(temperatureValueOn);
+  lcd.print(degreeSign);
+  lcd.print("C");
+  lcd.setCursor(0,3);
+  lcd.print("Temp off:");
+  lcd.setCursor(10,3);
+  lcd.print(temperatureValueOff);
+  lcd.print(degreeSign);
+  lcd.print("C");
 
   while(!screenExit) {
     homeScreenSwitch();
@@ -942,7 +953,6 @@ void runWorkingHours() {
 }
 
 void homeScreenSwitch() {
-  
   rotaryState = rotary.rotate();
   rotaryBtnState = rotary.pushType(700);
 
@@ -982,6 +992,8 @@ void setup() {
   EEPROM_readAnything(eepromWorkingHoursOnM, workingHoursOnMValue);
   EEPROM_readAnything(eepromWorkingHoursOffH, workingHoursOffHValue);
   EEPROM_readAnything(eepromWorkingHoursOffM, workingHoursOffMValue);
+  EEPROM_readAnything(eepromTemperatureOn, temperatureValueOn);
+  EEPROM_readAnything(eepromTemperatureOff, temperatureValueOff);
   
   runHomeScreen();
 }
