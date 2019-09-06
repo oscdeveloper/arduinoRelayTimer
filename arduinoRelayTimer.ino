@@ -39,7 +39,7 @@ byte eepromIntervalOffS = 23; // 23-24
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 DateTime now;
 
-byte workingModeValue = 3;
+byte workingModeValue;
 String workingMode[] = {"Temperature", "Interval"};
 String workingModeUppercase[] = {"TEMPERATURE", "INTERVAL"};
 String settingsMenu[] = {"Clock Date/Time", "Working Mode", "Working Hours", "Interval", "Temperature"};
@@ -60,6 +60,11 @@ short indicatorRow = 1;
 unsigned short indicatorRowMax = 3;
 char indicatorSign = 126;
 char degreeSign = 223;
+
+short workingHoursOnHValue;
+short workingHoursOnMValue;
+short workingHoursOffHValue;
+short workingHoursOffMValue;
 
 void printIndicator(short printIndicatorRow, String text = "") {
   lcd.setCursor(0,printIndicatorRow);
@@ -464,14 +469,6 @@ void runSettingsWorkingHours() {
   unsigned short indicatorRowWorkingHours = 2;
   byte workingHoursSettingsLevel = 0;
   short workingHoursValue;
-  short workingHoursOnHValue;
-  short workingHoursOnMValue;
-  short workingHoursOffHValue;
-  short workingHoursOffMValue;
-  EEPROM_readAnything(eepromWorkingHoursOnH, workingHoursOnHValue);
-  EEPROM_readAnything(eepromWorkingHoursOnM, workingHoursOnMValue);
-  EEPROM_readAnything(eepromWorkingHoursOffH, workingHoursOffHValue);
-  EEPROM_readAnything(eepromWorkingHoursOffM, workingHoursOffMValue);
   
   lcd.clear();
   lcd.setCursor(0,0);
@@ -834,7 +831,6 @@ void runMenuSettings(bool reset = false) {
 }
 
 void runSettingsWorkingMode() {
-  EEPROM_readAnything(eepromWorkingMode, workingModeValue);
 
   short i = workingModeValue;
   lcd.clear();
@@ -878,7 +874,6 @@ void runSettingsWorkingMode() {
 
 void runHomeScreen() {
   lcd.clear();
-  // TODO add on steup initial value if it's empty in eeprom
 
   workingModeValue ? lcd.setCursor(3,3) : lcd.setCursor(2,3);
   lcd.print(workingModeUppercase[workingModeValue] + String(" MODE"));
@@ -931,8 +926,16 @@ void runInterval() {
 void runWorkingHours() {
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("runWorkingHours");
-
+  lcd.print("WORKING HOURS");
+  lcd.setCursor(0,2);
+  lcd.print("Start:");
+  lcd.setCursor(7,2);
+  lcd.print(formatDateNumber(workingHoursOnHValue) + String(":") + formatDateNumber(workingHoursOnMValue));
+  lcd.setCursor(0,3);
+  lcd.print("End:");
+  lcd.setCursor(7,3);
+  lcd.print(formatDateNumber(workingHoursOffHValue) + String(":") + formatDateNumber(workingHoursOffMValue));
+  
   while(!screenExit) {
     homeScreenSwitch();
   }  
@@ -940,8 +943,8 @@ void runWorkingHours() {
 
 void homeScreenSwitch() {
   
-  rotaryBtnState = rotary.pushType(700);
   rotaryState = rotary.rotate();
+  rotaryBtnState = rotary.pushType(700);
 
   if (rotaryState == 1) { // CW
     homeScreenNumber++;
@@ -974,9 +977,11 @@ void setup() {
  
   Serial.begin(9600);  
 
-  if (workingModeValue == 3) {
-    EEPROM_readAnything(eepromWorkingMode, workingModeValue);
-  }
+  EEPROM_readAnything(eepromWorkingMode, workingModeValue);
+  EEPROM_readAnything(eepromWorkingHoursOnH, workingHoursOnHValue);
+  EEPROM_readAnything(eepromWorkingHoursOnM, workingHoursOnMValue);
+  EEPROM_readAnything(eepromWorkingHoursOffH, workingHoursOffHValue);
+  EEPROM_readAnything(eepromWorkingHoursOffM, workingHoursOffMValue);
   
   runHomeScreen();
 }
