@@ -35,17 +35,19 @@ byte eepromIntervalOffS = 23; // 23-24
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 DateTime now;
 
-unsigned long aktualnyCzas = 0;
-unsigned long zapamietanyCzas = 0;
-unsigned long roznicaCzasu = 0;
+
+unsigned long intervalCountActualTime = 0;
+unsigned long intervalCountSavedTime = 0;
 unsigned short intervalLeftH;
 unsigned short intervalLeftM;
 unsigned short intervalLeftS;
-bool intervalModeOn = true;
-unsigned long intervalTimeLeftInSeconds;
-byte workingModeValue;
-String workingMode[] = {"Temperature", "Interval"};
-String workingModeUppercase[] = {"TEMPERATURE", "INTERVAL"};
+unsigned long intervalTimeLeft[2];
+byte intervalMode = 1;
+
+byte workingMode;
+String workingModeItems[] = {"Temperature", "Interval"};
+String workingModeItemsUppercase[] = {"TEMPERATURE", "INTERVAL"};
+
 String settingsMenu[] = {"Clock Date/Time", "Working Mode", "Working Hours", "Interval", "Temperature"};
 String onOffItemsUppercase[] = {"ON", "OFF"};
 String dateTimeItems[] = {"Date", "Time"};
@@ -461,12 +463,18 @@ void runSettingsInterval() {
       EEPROM_writeAnything(eepromIntervalOffH, intervalOffHValue);
       EEPROM_writeAnything(eepromIntervalOffM, intervalOffMValue);
       EEPROM_writeAnything(eepromIntervalOffS, intervalOffSValue);
+      saveToVariableIntervalTimeLeft();
       screenExit = true;
       screenNumber = 1; // settings
     }    
   }
 }
 
+void saveToVariableIntervalTimeLeft() {
+  intervalTimeLeft[0] = intervalOffHValue * 3600000 + intervalOffMValue * 60000 + intervalOffSValue * 1000;
+  intervalTimeLeft[1] = intervalOnHValue * 3600000 + intervalOnMValue * 60000 + intervalOnSValue * 1000;
+}
+  
 void runSettingsWorkingHours() {
   unsigned short indicatorRowWorkingHours = 2;
   byte workingHoursSettingsLevel = 0;
@@ -827,14 +835,14 @@ void runMenuSettings(bool reset = false) {
 
 void runSettingsWorkingMode() {
 
-  short i = workingModeValue;
+  short i = workingMode;
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("SET WORKING MODE");
   lcd.setCursor(0,2);
   lcd.print("Mode: ");
   lcd.setCursor(6,2);
-  lcd.print(workingMode[workingModeValue]);
+  lcd.print(workingModeItems[workingMode]);
 
   while(!screenExit) {
     
@@ -855,23 +863,57 @@ void runSettingsWorkingMode() {
       lcd.setCursor(6,2);
       lcd.print("                   ");
       lcd.setCursor(6,2);
-      lcd.print(workingMode[i]);
+      lcd.print(workingModeItems[i]);
     }
     
     if (rotaryBtnState == 2) {
-      workingModeValue = i;
-      EEPROM_writeAnything(eepromWorkingMode, workingModeValue);
+      workingMode = i;
+      EEPROM_writeAnything(eepromWorkingMode, workingMode);
       screenExit = true;
       screenNumber = 1;
     }
   }
 }
 
+void intervalTimer(bool drawLcdScreen = false) {
+  if (workingMode == 1) { // interval mode setting
+    intervalCountActualTime = millis();
+    long temp = 0;
+    long intervalCountDiffTime = intervalCountActualTime - intervalCountSavedTime;
+
+    if (intervalCountDiffTime >= intervalTimeLeft[intervalMode]) {
+      intervalCountSavedTime = intervalCountActualTime;
+      intervalCountDiffTime = intervalCountActualTime - intervalCountSavedTime;
+      intervalMode = intervalMode ? 0 : 1;
+      if (drawLcdScreen) {
+        lcd.setCursor(6,0);
+        if (intervalMode) {
+          lcd.print("on ");
+        } else {
+          lcd.print("off");
+        }
+      }
+    }
+
+    temp = (intervalTimeLeft[intervalMode] - intervalCountDiffTime) / 1000;
+    intervalLeftH = (temp > 0 ? (temp / 3600) : 0);
+    temp = temp - (intervalLeftH * 3600);
+    intervalLeftM = temp > 0 ? (temp / 60) : 0;
+    temp = temp - (intervalLeftM * 60);
+    intervalLeftS = temp > 0 ? temp : 0;
+
+    if (drawLcdScreen) {      
+      lcd.setCursor(11,0);
+      lcd.print(formatDateNumber(intervalLeftH) + String(":") + formatDateNumber(intervalLeftM) + String(":") + formatDateNumber(intervalLeftS));
+    }
+  }  
+}
+
 void runHomeScreen() {
   lcd.clear();
 
-  workingModeValue ? lcd.setCursor(3,3) : lcd.setCursor(2,3);
-  lcd.print(workingModeUppercase[workingModeValue] + String(" MODE"));
+  workingMode ? lcd.setCursor(3,3) : lcd.setCursor(2,3);
+  lcd.print(workingModeItemsUppercase[workingMode] + String(" MODE"));
   
   while(!screenExit) {
 
@@ -894,6 +936,7 @@ void runHomeScreen() {
       + String("/")
       + now.year());          
 
+    intervalTimer();
     homeScreenSwitch();
   }
 }
@@ -920,6 +963,7 @@ void runTemperature() {
   lcd.print("C");
 
   while(!screenExit) {
+    intervalTimer();
     homeScreenSwitch();
   }
 }
@@ -927,9 +971,13 @@ void runTemperature() {
 void runInterval() {
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("Relay switch off for");
-  lcd.setCursor(6,1);
-  lcd.print(formatDateNumber(0) + String(":") + formatDateNumber(0) + String(":") + formatDateNumber(0));
+  lcd.print("Relay");
+  lcd.setCursor(6,0);
+  if (intervalMode) {
+    lcd.print("on ");
+  } else {
+    lcd.print("off");
+  }
   lcd.setCursor(0,2);
   lcd.print("Range on:");
   lcd.setCursor(11,2);
@@ -940,7 +988,7 @@ void runInterval() {
   lcd.print(formatDateNumber(intervalOffHValue) + String(":") + formatDateNumber(intervalOffMValue) + String(":") + formatDateNumber(intervalOffSValue));
   
   while(!screenExit) {
-    intervalSwitch();
+    intervalTimer(true);
     homeScreenSwitch();
   }
 }
@@ -959,6 +1007,7 @@ void runWorkingHours() {
   lcd.print(formatDateNumber(workingHoursOffHValue) + String(":") + formatDateNumber(workingHoursOffMValue));
   
   while(!screenExit) {
+    intervalTimer();
     homeScreenSwitch();
   }  
 }
@@ -980,51 +1029,14 @@ void homeScreenSwitch() {
   }
 
   if (rotaryState > 0) {
-    screenNumber = homeScreens[workingModeValue][homeScreenNumber];
     screenExit = true;
+    screenNumber = homeScreens[workingMode][homeScreenNumber];
   }
       
   if (rotaryBtnState == 2) {
     screenExit = true;
     screenNumber = 1; // settings
   } 
-}
-
-void intervalSwitch() {
-  if (workingModeValue == 1) { // interval mode setting
-    long roznica;
-    aktualnyCzas = millis();
-    if (intervalModeOn) {
-//      intervalTimeLeftInSeconds = ((intervalOnHValue * 3600000 + intervalOnMValue * 60000 + intervalOnSValue * 1000) - millis()) / 1000;
-      intervalTimeLeftInSeconds = intervalOnHValue * 3600000 + intervalOnMValue * 60000 + intervalOnSValue * 1000;
-    } else {
-//      intervalTimeLeftInSeconds = ((intervalOffHValue * 3600000 + intervalOffMValue * 60000 + intervalOffSValue * 1000) - millis()) / 1000;
-      intervalTimeLeftInSeconds = intervalOffHValue * 3600000 + intervalOffMValue * 60000 + intervalOffSValue * 1000;
-    }
-Serial.println(intervalTimeLeftInSeconds);
-    if (aktualnyCzas - zapamietanyCzas >= intervalTimeLeftInSeconds) {
-      zapamietanyCzas = aktualnyCzas;
-      intervalModeOn = !intervalModeOn;Serial.println(aktualnyCzas);delay(1000);
-    }
-
-    roznica = intervalTimeLeftInSeconds - aktualnyCzas;
-//    Serial.println(roznica);
-    intervalLeftH = (roznica > 0 ? (roznica / 3600000) : 0);
-    intervalTimeLeftInSeconds = roznica - (intervalLeftH * 3600000);
-    intervalLeftM = roznica > 0 ? (roznica / 60000) : 0;
-    intervalTimeLeftInSeconds = roznica - (intervalLeftM * 60000);
-    intervalLeftS = roznica > 0 ? (roznica / 1000) : 0;
-
-    lcd.setCursor(13,0);
-    if (intervalModeOn) {
-      lcd.print("off for");
-    } else {
-      lcd.print("on for ");
-    }
-    
-    lcd.setCursor(6,1);
-    lcd.print(formatDateNumber(intervalLeftH) + String(":") + formatDateNumber(intervalLeftM) + String(":") + formatDateNumber(intervalLeftS));
-  }  
 }
 
 //byte settingsMenuItemsArraySize(byte menuIndex) {
@@ -1038,7 +1050,7 @@ void setup() {
  
   Serial.begin(9600);  
 
-  EEPROM_readAnything(eepromWorkingMode, workingModeValue);
+  EEPROM_readAnything(eepromWorkingMode, workingMode);
   
   EEPROM_readAnything(eepromTemperatureOn, temperatureValueOn);
   EEPROM_readAnything(eepromTemperatureOff, temperatureValueOff);
@@ -1054,6 +1066,7 @@ void setup() {
   EEPROM_readAnything(eepromIntervalOffH, intervalOffHValue);
   EEPROM_readAnything(eepromIntervalOffM, intervalOffMValue);
   EEPROM_readAnything(eepromIntervalOffS, intervalOffSValue);
+  saveToVariableIntervalTimeLeft();
   
   runHomeScreen();
 }
