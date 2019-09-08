@@ -105,7 +105,15 @@ bool checkWorkingHours() {
   short actualTimeNumber = now.hour()*100 + now.minute()%100;
   short actualTimeNumberOn = workingHoursOnHValue*100 + workingHoursOnMValue%100;  
   short actualTimeNumberOff = workingHoursOffHValue*100 + workingHoursOffMValue%100;
-  return actualTimeNumber >= actualTimeNumberOn && actualTimeNumber <= actualTimeNumberOff;
+  if (actualTimeNumberOff - actualTimeNumberOn < 0) {
+    if (actualTimeNumber - actualTimeNumberOff > 0) {
+      return actualTimeNumber >= actualTimeNumberOn;       
+    } else {
+      return actualTimeNumber <= actualTimeNumberOff;  
+    }
+  } else {
+    return actualTimeNumber >= actualTimeNumberOn && actualTimeNumber <= actualTimeNumberOff;
+  }
 }
 
 void runSettingsClock() {
