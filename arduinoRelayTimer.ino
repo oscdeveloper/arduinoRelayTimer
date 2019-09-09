@@ -68,7 +68,6 @@ short workingHoursOnHValue;
 short workingHoursOnMValue;
 short workingHoursOffHValue;
 short workingHoursOffMValue;
-bool workingHoursCheck;
 
 unsigned long timerCountActualTime = 0;
 unsigned long timerCountSavedTime = 0;
@@ -100,12 +99,17 @@ float formatTemperatureNumber(float number) {
   return round(number * 10.0) / 10.0;
 }
 
-bool checkWorkingHours() {
-  now = rtc.now();
+bool checkWorkingHours(bool readRtc = true) {
+  if (readRtc) {
+    now = rtc.now();   
+    Serial.println("readRtc");
+  }
   short actualTimeNumber = now.hour()*100 + now.minute()%100;
   short actualTimeNumberOn = workingHoursOnHValue*100 + workingHoursOnMValue%100;  
   short actualTimeNumberOff = workingHoursOffHValue*100 + workingHoursOffMValue%100;
-  if (actualTimeNumberOff - actualTimeNumberOn < 0) {
+  if (actualTimeNumberOn == actualTimeNumberOff) {
+    return true;
+  } else if (actualTimeNumberOff - actualTimeNumberOn < 0) {
     if (actualTimeNumber - actualTimeNumberOff > 0) {
       return actualTimeNumber >= actualTimeNumberOn;       
     } else {
@@ -984,8 +988,9 @@ void runHomeScreen() {
       + String("/")
       + formatDateNumber(now.month())
       + String("/")
-      + now.year());          
+      + now.year());
 
+    temperatureRead();
     intervalTimer();
     homeScreenSwitch();
   }
