@@ -949,15 +949,20 @@ void intervalTimerListener(bool drawLcdScreen = false) {
         timerCountSavedTimeInterval = timerCountActualTime;
         intervalCountDiffTime = timerCountActualTime - timerCountSavedTimeInterval;
         intervalMode = intervalMode ? 0 : 1;
+        
         if (drawLcdScreen) {
           lcd.setCursor(6,0);
-          if (intervalMode) {
-            switchRelay();
+          if (intervalMode) {            
             lcd.print("on ");
-          } else {
-            switchRelay(false);
+          } else {            
             lcd.print("off");
           }
+        }
+
+        if (intervalMode) {
+          switchRelay();
+        } else {
+          switchRelay(false);
         }
       }
   
