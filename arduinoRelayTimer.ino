@@ -1047,6 +1047,7 @@ void runHomeScreen() {
     if (!checkWorkingHours(false)) {
       lcd.setCursor(0,2);
       lcd.print("OUT OF WORKING HOURS");
+      switchRelay(false);
     } else {
       temperatureReadListener();
       intervalTimerListener();
@@ -1080,6 +1081,7 @@ void runTemperatureScreen() {
     if (!checkWorkingHours()) {
       lcd.setCursor(0,0);
       lcd.print("OUT OF WORKING HOURS");
+      switchRelay(false);
     } else {
       temperatureReadListener(true);
       intervalTimerListener();
@@ -1111,6 +1113,7 @@ void runIntervalScreen() {
     if (!checkWorkingHours()) {
       lcd.setCursor(0,0);
       lcd.print("OUT OF WORKING HOURS");
+      switchRelay(false);
     } else {
       temperatureReadListener();
       intervalTimerListener(true);
@@ -1136,6 +1139,7 @@ void runWorkingHoursScreen() {
     if (!checkWorkingHours()) {
       lcd.setCursor(0,0);
       lcd.print("OUT OF WORKING HOURS");
+      switchRelay(false);
     } else {
       temperatureReadListener();
       intervalTimerListener();    
