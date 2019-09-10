@@ -10,6 +10,8 @@
 #define rotaryCW 6
 #define rotaryBtn 7
 
+#define pinRelay 8
+
 LiquidCrystal_I2C lcd(0x27,20,4);
 RTC_DS1307 rtc;
 Adafruit_SHT31 temperatureSensor = Adafruit_SHT31();
@@ -49,6 +51,7 @@ byte homeScreens[2][3] = {
  {0,8,9} // interval
 };
 
+bool workingHoursActive = false;
 short homeScreenNumber = 0;
 bool resetSettingsMenu = true;
 byte screenNumber = 1;
@@ -70,7 +73,8 @@ short workingHoursOffHValue;
 short workingHoursOffMValue;
 
 unsigned long timerCountActualTime = 0;
-unsigned long timerCountSavedTime = 0;
+unsigned long timerCountSavedTimeInterval = 0;
+unsigned long timerCountSavedTimeTemperature = 0;
 
 short intervalOnHValue;
 short intervalOnMValue;
@@ -99,24 +103,48 @@ float formatTemperatureNumber(float number) {
   return round(number * 10.0) / 10.0;
 }
 
+void switchRelay(bool switchOn = true) {
+  digitalWrite(pinRelay, switchOn);
+}
+
 bool checkWorkingHours(bool readRtc = true) {
   if (readRtc) {
     now = rtc.now();   
-    Serial.println("readRtc");
   }
-  short actualTimeNumber = now.hour()*100 + now.minute()%100;
-  short actualTimeNumberOn = workingHoursOnHValue*100 + workingHoursOnMValue%100;  
-  short actualTimeNumberOff = workingHoursOffHValue*100 + workingHoursOffMValue%100;
+  unsigned short actualTimeNumber = now.hour()*100 + now.minute()%100;
+  unsigned short actualTimeNumberOn = workingHoursOnHValue*100 + workingHoursOnMValue%100;  
+  unsigned short actualTimeNumberOff = workingHoursOffHValue*100 + workingHoursOffMValue%100;
   if (actualTimeNumberOn == actualTimeNumberOff) {
-    return true;
+    workingHoursActive = true;
   } else if (actualTimeNumberOff - actualTimeNumberOn < 0) {
     if (actualTimeNumber - actualTimeNumberOff > 0) {
-      return actualTimeNumber >= actualTimeNumberOn;       
+      workingHoursActive = actualTimeNumber >= actualTimeNumberOn;       
     } else {
-      return actualTimeNumber <= actualTimeNumberOff;  
+      workingHoursActive = actualTimeNumber < actualTimeNumberOff;  
     }
   } else {
-    return actualTimeNumber >= actualTimeNumberOn && actualTimeNumber <= actualTimeNumberOff;
+    workingHoursActive = actualTimeNumber >= actualTimeNumberOn && actualTimeNumber < actualTimeNumberOff;
+  }
+  return workingHoursActive;
+}
+
+void drawSettingsMenu() {
+  if (resetSettingsMenu) {
+     menuStart = 0;
+     menuEnd = 2;
+     indicatorRow=1;
+     indicatorRowMax=3;
+     resetSettingsMenu = false;
+  }  
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print(String("SETTINGS ") + (menuStart == 0 ? 1 : 2) + String("/2"));
+  printIndicator(indicatorRow);
+  short row=1;
+  for (short menuItem=menuStart; menuItem<=menuEnd; menuItem++) {
+    lcd.setCursor(1,row);
+    lcd.print(settingsMenu[menuItem]);
+    row++;
   }
 }
 
@@ -495,7 +523,7 @@ void runSettingsInterval() {
 }
 
 void saveToVariableIntervalTimeLeft() {
-  timerCountSavedTime = millis();
+  timerCountSavedTimeInterval = millis();
   intervalTimeLeft[0] = intervalOffHValue * 3600000 + intervalOffMValue * 60000 + intervalOffSValue * 1000;
   intervalTimeLeft[1] = intervalOnHValue * 3600000 + intervalOnMValue * 60000 + intervalOnSValue * 1000;
 }
@@ -760,27 +788,7 @@ void runSettingsTemperature() {
   }
 }
 
-void drawSettingsMenu() {
-  if (resetSettingsMenu) {
-     menuStart = 0;
-     menuEnd = 2;
-     indicatorRow=1;
-     indicatorRowMax=3;
-     resetSettingsMenu = false;
-  }  
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print(String("SETTINGS ") + (menuStart == 0 ? 1 : 2) + String("/2"));
-  printIndicator(indicatorRow);
-  short row=1;
-  for (short menuItem=menuStart; menuItem<=menuEnd; menuItem++) {
-    lcd.setCursor(1,row);
-    lcd.print(settingsMenu[menuItem]);
-    row++;
-  }
-}
-
-void runMenuSettings(bool reset = false) {
+void runSettingsMenu(bool reset = false) {
 
   drawSettingsMenu();
 
@@ -900,65 +908,106 @@ void runSettingsWorkingMode() {
   }
 }
 
-void intervalTimer(bool drawLcdScreen = false) {
-  if (!checkWorkingHours()) {
-    if (drawLcdScreen) {
-      lcd.setCursor(0,0);
-      lcd.print("OUT OF WORKING HOURS");
-    }
-  } else if (workingMode == 1) { // interval mode setting
-    timerCountActualTime = millis();
-    unsigned short intervalLeftH;
-    unsigned short intervalLeftM;
-    unsigned short intervalLeftS;
-    long intervalTempDiff = 0;
-    long intervalCountDiffTime = timerCountActualTime - timerCountSavedTime;
+void homeScreenSwitch() {
+  rotaryState = rotary.rotate();
+  rotaryBtnState = rotary.pushType(700);
 
-    if (intervalCountDiffTime >= intervalTimeLeft[intervalMode]) {
-      timerCountSavedTime = timerCountActualTime;
-      intervalCountDiffTime = timerCountActualTime - timerCountSavedTime;
-      intervalMode = intervalMode ? 0 : 1;
-      if (drawLcdScreen) {
-        lcd.setCursor(6,0);
-        if (intervalMode) {
-          lcd.print("on ");
-        } else {
-          lcd.print("off");
-        }
-      }
+  if (rotaryState == 1) { // CW
+    homeScreenNumber++;
+    if (homeScreenNumber > 2) {
+      homeScreenNumber = 0;
     }
-
-    intervalTempDiff = (intervalTimeLeft[intervalMode] - intervalCountDiffTime) / 1000;
-    intervalLeftH = (intervalTempDiff > 0 ? (intervalTempDiff / 3600) : 0);
-    intervalTempDiff = intervalTempDiff - (intervalLeftH * 3600);
-    intervalLeftM = intervalTempDiff > 0 ? (intervalTempDiff / 60) : 0;
-    intervalTempDiff = intervalTempDiff - (intervalLeftM * 60);
-    intervalLeftS = intervalTempDiff > 0 ? intervalTempDiff : 0;
-
-    if (drawLcdScreen) {      
-      lcd.setCursor(11,0);
-      lcd.print(formatDateNumber(intervalLeftH) + String(":") + formatDateNumber(intervalLeftM) + String(":") + formatDateNumber(intervalLeftS));
+  } else if (rotaryState == 2) { // CCW
+    homeScreenNumber--;
+    if (homeScreenNumber < 0) {
+      homeScreenNumber = 2;
     }
-  }  
+  }
+
+  if (rotaryState > 0) {
+    screenExit = true;
+    screenNumber = homeScreens[workingMode][homeScreenNumber];
+  }
+      
+  if (rotaryBtnState == 2) {
+    screenExit = true;
+    screenNumber = 1; // settings
+  } 
 }
 
-void temperatureRead(bool drawLcdScreen = false) {
-  if (!checkWorkingHours()) {
-    if (drawLcdScreen) {
-      lcd.setCursor(0,0);
-      lcd.print("OUT OF WORKING HOURS");
-    }
-  } else if (workingMode == 0) { // temperature mode setting
-    timerCountActualTime = millis();
-
-    if (timerCountActualTime - timerCountSavedTime >= 1000UL) {
-      actualTemperature = formatTemperatureNumber(temperatureSensor.readTemperature());
-      timerCountSavedTime = timerCountActualTime;
-    
-      if (drawLcdScreen) {
-        lcd.setCursor(10,0);
-        lcd.print(actualTemperature);
+void intervalTimerListener(bool drawLcdScreen = false) {
+  if (workingMode == 1) { // interval mode setting
+    if (workingHoursActive) {
+      timerCountActualTime = millis();
+      unsigned short intervalLeftH;
+      unsigned short intervalLeftM;
+      unsigned short intervalLeftS;
+      long intervalTempDiff = 0;
+      long intervalCountDiffTime = timerCountActualTime - timerCountSavedTimeInterval;
+  
+      if (intervalCountDiffTime >= intervalTimeLeft[intervalMode]) {
+        timerCountSavedTimeInterval = timerCountActualTime;
+        intervalCountDiffTime = timerCountActualTime - timerCountSavedTimeInterval;
+        intervalMode = intervalMode ? 0 : 1;
+        if (drawLcdScreen) {
+          lcd.setCursor(6,0);
+          if (intervalMode) {
+            switchRelay();
+            lcd.print("on ");
+          } else {
+            switchRelay(false);
+            lcd.print("off");
+          }
+        }
       }
+  
+      intervalTempDiff = (intervalTimeLeft[intervalMode] - intervalCountDiffTime) / 1000;
+      intervalLeftH = (intervalTempDiff > 0 ? (intervalTempDiff / 3600) : 0);
+      intervalTempDiff = intervalTempDiff - (intervalLeftH * 3600);
+      intervalLeftM = intervalTempDiff > 0 ? (intervalTempDiff / 60) : 0;
+      intervalTempDiff = intervalTempDiff - (intervalLeftM * 60);
+      intervalLeftS = intervalTempDiff > 0 ? intervalTempDiff : 0;
+  
+      if (drawLcdScreen) {      
+        lcd.setCursor(11,0);
+        lcd.print(formatDateNumber(intervalLeftH) + String(":") + formatDateNumber(intervalLeftM) + String(":") + formatDateNumber(intervalLeftS));
+      }
+    } else {
+      switchRelay(false);
+    }
+  }
+}
+
+void temperatureReadListener(bool drawLcdScreen = false) {
+  if (workingMode == 0) {
+    if (workingHoursActive) { // temperature mode setting
+      timerCountActualTime = millis();
+  
+      if (timerCountActualTime - timerCountSavedTimeTemperature >= 1000UL) {
+        timerCountSavedTimeTemperature = timerCountActualTime;
+        actualTemperature = formatTemperatureNumber(temperatureSensor.readTemperature());
+      
+        if (drawLcdScreen) {
+          lcd.setCursor(10,0);
+          lcd.print(actualTemperature);
+        }
+
+        if (temperatureValueOn < temperatureValueOff) {
+          if (actualTemperature >= temperatureValueOn && actualTemperature < temperatureValueOff) {
+            switchRelay();
+          } else {
+            switchRelay(false);
+          }
+        } else {
+          if (actualTemperature <= temperatureValueOn && actualTemperature > temperatureValueOff) {
+            switchRelay();
+          } else {
+            switchRelay(false);
+          }          
+        }
+      }      
+    } else {
+      switchRelay(false);
     }
   }
 }
@@ -990,13 +1039,18 @@ void runHomeScreen() {
       + String("/")
       + now.year());
 
-    temperatureRead();
-    intervalTimer();
+    if (!checkWorkingHours(false)) {
+      lcd.setCursor(0,2);
+      lcd.print("OUT OF WORKING HOURS");
+    } else {
+      temperatureReadListener();
+      intervalTimerListener();
+    }
     homeScreenSwitch();
   }
 }
 
-void runTemperature() {  
+void runTemperatureScreen() {  
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Temp now:");
@@ -1018,13 +1072,18 @@ void runTemperature() {
   lcd.print("C");
 
   while(!screenExit) {
-    temperatureRead(true);
-    intervalTimer();
+    if (!checkWorkingHours()) {
+      lcd.setCursor(0,0);
+      lcd.print("OUT OF WORKING HOURS");
+    } else {
+      temperatureReadListener(true);
+      intervalTimerListener();
+    }
     homeScreenSwitch();
   }
 }
 
-void runInterval() {
+void runIntervalScreen() {
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Relay");
@@ -1044,13 +1103,18 @@ void runInterval() {
   lcd.print(formatDateNumber(intervalOffHValue) + String(":") + formatDateNumber(intervalOffMValue) + String(":") + formatDateNumber(intervalOffSValue));
   
   while(!screenExit) {
-    temperatureRead();
-    intervalTimer(true);
+    if (!checkWorkingHours()) {
+      lcd.setCursor(0,0);
+      lcd.print("OUT OF WORKING HOURS");
+    } else {
+      temperatureReadListener();
+      intervalTimerListener(true);
+    }
     homeScreenSwitch();
   }
 }
 
-void runWorkingHours() {
+void runWorkingHoursScreen() {
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("WORKING HOURS");
@@ -1064,51 +1128,29 @@ void runWorkingHours() {
   lcd.print(formatDateNumber(workingHoursOffHValue) + String(":") + formatDateNumber(workingHoursOffMValue));
   
   while(!screenExit) {
-    temperatureRead();
-    intervalTimer();    
+    if (!checkWorkingHours()) {
+      lcd.setCursor(0,0);
+      lcd.print("OUT OF WORKING HOURS");
+    } else {
+      temperatureReadListener();
+      intervalTimerListener();    
+    }
     homeScreenSwitch();
   }  
 }
 
-void homeScreenSwitch() {
-  rotaryState = rotary.rotate();
-  rotaryBtnState = rotary.pushType(700);
-
-  if (rotaryState == 1) { // CW
-    homeScreenNumber++;
-    if (homeScreenNumber > 2) {
-      homeScreenNumber = 0;
-    }
-  } else if (rotaryState == 2) { // CCW
-    homeScreenNumber--;
-    if (homeScreenNumber < 0) {
-      homeScreenNumber = 2;
-    }
-  }
-
-  if (rotaryState > 0) {
-    screenExit = true;
-    screenNumber = homeScreens[workingMode][homeScreenNumber];
-  }
-      
-  if (rotaryBtnState == 2) {
-    screenExit = true;
-    screenNumber = 1; // settings
-  } 
-}
-
-//byte settingsMenuItemsArraySize(byte menuIndex) {
-  // return sizeof(settingsMenuItems[menuIndex]) / sizeof(settingsMenuItems[menuIndex][0])
-//}
-
 void setup() {
+
+  pinMode(pinRelay, OUTPUT);
  
   lcd.init();
   lcd.noBacklight();
   
   temperatureSensor.begin(0x44);
+
+  rotary.setDebounceDelay(0);
  
-  Serial.begin(9600);  
+//  Serial.begin(9600);  
 
   EEPROM_readAnything(eepromWorkingMode, workingMode);
   
@@ -1141,7 +1183,7 @@ void loop() {
       runHomeScreen();
       break;
     case 1:
-      runMenuSettings();
+      runSettingsMenu();
       break;
     case 2:
       runSettingsWorkingMode();
@@ -1159,13 +1201,13 @@ void loop() {
       runSettingsClock();
       break;
     case 7:
-      runTemperature();
+      runTemperatureScreen();
       break;
     case 8:
-      runInterval();
+      runIntervalScreen();
       break;
     case 9:
-      runWorkingHours();
+      runWorkingHoursScreen();
       break;
   }
 }
