@@ -74,7 +74,7 @@ short workingHoursOffMValue;
 
 // {[actualTime ms [millis()]], [savedTime ms]}
 unsigned long timeChrono[][2] = {
-  {0,0}, // [0] set temperature -> now is
+  {0,0}, // [0] set temperature -> temp now
   {0,0}, // [1] interval listener
   {0,0}, // [2] temperature listener
   {0,0}, // [3] working hours
@@ -374,8 +374,6 @@ void runSettingsInterval() {
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("SET INTERVAL");
-  lcd.setCursor(6,1);
-  lcd.print("HH:MM:SS");
   printIndicator(indicatorRowInterval);
   short row=2;
   for (short menuItem=0; menuItem<=1; menuItem++) {
@@ -734,7 +732,7 @@ void runSettingsTemperature() {
     if (timeChrono[0][0] - timeChrono[0][1] >= 1000UL) {
       timeChrono[0][1] = timeChrono[0][0];
       lcd.setCursor(0,1);
-      lcd.print(String("Now is ") + formatTemperatureNumber(temperatureSensor.readTemperature()));
+      lcd.print(String("Temp now ") + formatTemperatureNumber(temperatureSensor.readTemperature()));
       lcd.print(degreeSign);
       lcd.print("C");
       lcd.setCursor(6,indicatorRowTemperature);
@@ -1114,9 +1112,7 @@ void runHomeScreen() {
 void runTemperatureScreen() {  
   lcd.clear();
   lcd.setCursor(0,0);
-  lcd.print("Temp now:");
-  lcd.setCursor(10,0);
-  lcd.print(temperatureSensor.readTemperature());
+  lcd.print(String("Temp now: ") + formatTemperatureNumber(temperatureSensor.readTemperature()));
   lcd.print(degreeSign);
   lcd.print("C");
   lcd.setCursor(0,2);
