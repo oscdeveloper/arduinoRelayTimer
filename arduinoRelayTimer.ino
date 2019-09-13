@@ -47,8 +47,8 @@ String settingsMenu[] = {"Working Mode", "Interval", "Temperature", "Working Hou
 String onOffItemsUppercase[] = {"ON", "OFF"};
 String dateTimeItems[] = {"Date", "Time"};
 byte homeScreens[][3] = {
- {0,7,9}, // temperature
- {0,8,9} // interval
+ {0,7,9}, // [0] temperature
+ {0,8,9}, // [1] interval
 };
 
 bool workingHoursActive = false;
@@ -74,11 +74,12 @@ short workingHoursOffMValue;
 
 // {[actualTime ms [millis()]], [savedTime ms]}
 unsigned long timeChrono[][2] = {
-  {0,0}, // set temperature -> now is
-  {0,0}, // interval listener
-  {0,0}, // temperature listener
-  {0,0}, // working hours
-  {0,0}, // home screen
+  {0,0}, // [0] set temperature -> now is
+  {0,0}, // [1] interval listener
+  {0,0}, // [2] temperature listener
+  {0,0}, // [3] working hours
+  {0,0}, // [4] home screen
+  {0,0}, // [5] backlight
 };
 
 short intervalOnHValue;
@@ -89,6 +90,9 @@ short intervalOffMValue;
 short intervalOffSValue;
 unsigned long intervalTimeLeft[2];
 byte intervalMode = 1;
+
+bool backlightSwitch = true;
+unsigned int backlightTimeOn = 10000; // 10 sec
 
 void printIndicator(short printIndicatorRow, String text = "") {
   lcd.setCursor(0,printIndicatorRow);
@@ -110,6 +114,26 @@ float formatTemperatureNumber(float number) {
 
 void switchRelay(bool switchOn = true) {
   digitalWrite(pinRelay, switchOn);
+}
+
+void backLight() {
+  
+  timeChrono[5][0] = millis();
+  if (rotaryState > 0 || rotaryBtnState > 0){    
+    timeChrono[5][1] = timeChrono[5][0];
+  }
+  
+  if (timeChrono[5][0] - timeChrono[5][1] >= backlightTimeOn) {
+    if (!backlightSwitch) {
+      lcd.noBacklight();
+    }
+    backlightSwitch = true;
+  } else {
+    if (backlightSwitch) {
+      lcd.backlight();
+    }
+    backlightSwitch = false;
+  }
 }
 
 bool checkWorkingHours(bool readRtc = true) {
@@ -134,6 +158,7 @@ bool checkWorkingHours(bool readRtc = true) {
 }
 
 void drawSettingsMenu() {
+  
   if (resetSettingsMenu) {
      menuStart = 0;
      menuEnd = 2;
@@ -187,6 +212,7 @@ void runSettingsClock() {
     
     rotaryBtnState = rotary.pushType(700);
     rotaryState = rotary.rotate();
+    backLight();
 
     if (clockSettingsLevel == 0) { // on/off menu
       if (rotaryState == 1) { // CW
@@ -370,6 +396,7 @@ void runSettingsInterval() {
     
     rotaryBtnState = rotary.pushType(700);
     rotaryState = rotary.rotate();
+    backLight();
 
     if (intervalSettingsLevel == 0) { // on/off menu
       if (rotaryState == 1) { // CW
@@ -561,6 +588,7 @@ void runSettingsWorkingHours() {
     
     rotaryBtnState = rotary.pushType(700);
     rotaryState = rotary.rotate();
+    backLight();
 
     if (workingHoursSettingsLevel == 0) { // on/off menu
       if (rotaryState == 1) { // CW
@@ -700,6 +728,7 @@ void runSettingsTemperature() {
     
     rotaryBtnState = rotary.pushType(700);
     rotaryState = rotary.rotate();
+    backLight();
 
     timeChrono[0][0] = millis();
     if (timeChrono[0][0] - timeChrono[0][1] >= 1000UL) {
@@ -803,12 +832,15 @@ void runSettingsTemperature() {
 
 void runSettingsMenu(bool reset = false) {
 
+  switchRelay(false);
+
   drawSettingsMenu();
 
   while(!screenExit) {
 
     rotaryBtnState = rotary.pushType(700);
     rotaryState = rotary.rotate();
+    backLight();
 
     if ( rotaryState == 1 ) { // CW
       if (indicatorRow >= indicatorRowMax) {
@@ -894,6 +926,7 @@ void runSettingsWorkingMode() {
     
     rotaryBtnState = rotary.pushType(700);
     rotaryState = rotary.rotate();
+    backLight();
     
     if (rotaryState == 1) { // CW
       i++;
@@ -924,6 +957,7 @@ void runSettingsWorkingMode() {
 void homeScreenSwitch() {
   rotaryState = rotary.rotate();
   rotaryBtnState = rotary.pushType(700);
+  backLight();
 
   if (rotaryState == 1) { // CW
     homeScreenNumber++;
@@ -1041,7 +1075,7 @@ void runHomeScreen() {
     now = rtc.now();
 
     timeChrono[4][0] = millis();
-    if (timeChrono[4][0] - timeChrono[4][1] >= 1000UL) {
+    if (timeChrono[4][0] - timeChrono[4][1] >= 500UL) {
       timeChrono[4][1] = timeChrono[4][0];
       lcd.setCursor(6,0);
       lcd.print(
@@ -1186,7 +1220,6 @@ void setup() {
   pinMode(pinRelay, OUTPUT);
  
   lcd.init();
-  lcd.noBacklight();
   
   temperatureSensor.begin(0x44);
 
