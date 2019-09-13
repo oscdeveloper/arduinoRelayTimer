@@ -136,6 +136,11 @@ void backLight() {
   }
 }
 
+void drawOutOfWorkingHours(bool homeScreen = false) {
+  lcd.setCursor(0,(homeScreen ? 2 : 0));
+  lcd.print("OUT OF WORKING HOURS");
+}
+
 bool checkWorkingHours(bool readRtc = true) {
   if (readRtc) {
     now = rtc.now();   
@@ -154,6 +159,16 @@ bool checkWorkingHours(bool readRtc = true) {
   } else {
     workingHoursActive = actualTimeNumber >= actualTimeNumberOn && actualTimeNumber < actualTimeNumberOff;
   }
+
+  if (!workingHoursActive) {
+    timeChrono[3][0] = millis();
+    if (timeChrono[3][0] - timeChrono[3][1] >= 1000UL) {
+      timeChrono[3][1] = timeChrono[3][0];
+      drawOutOfWorkingHours(!readRtc);
+      switchRelay(false);
+    }
+  }
+  
   return workingHoursActive;
 }
 
@@ -1093,17 +1108,11 @@ void runHomeScreen() {
         + now.year());
     }
 
-    if (!checkWorkingHours(false)) {
-      timeChrono[4][0] = millis();
-      if (timeChrono[4][0] - timeChrono[4][1] >= 1000UL) {
-        timeChrono[4][1] = timeChrono[4][0];
-        lcd.setCursor(0,2);
-        lcd.print("OUT OF WORKING HOURS");
-        switchRelay(false);
-      }
-    } else {
+    if (checkWorkingHours(false)) {
       temperatureReadListener();
       intervalTimerListener();
+    } else {
+      drawOutOfWorkingHours(true);
     }
     homeScreenSwitch();
   }
@@ -1111,10 +1120,14 @@ void runHomeScreen() {
 
 void runTemperatureScreen() {  
   lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print(String("Temp now: ") + formatTemperatureNumber(temperatureSensor.readTemperature()));
-  lcd.print(degreeSign);
-  lcd.print("C");
+  if (workingHoursActive) {
+    lcd.setCursor(0,0);
+    lcd.print(String("Temp now: ") + formatTemperatureNumber(temperatureSensor.readTemperature()));
+    lcd.print(degreeSign);
+    lcd.print("C");
+  } else {
+    drawOutOfWorkingHours();
+  }
   lcd.setCursor(0,2);
   lcd.print("Temp on:");
   lcd.setCursor(10,2);
@@ -1129,15 +1142,7 @@ void runTemperatureScreen() {
   lcd.print("C");
 
   while(!screenExit) {
-    if (!checkWorkingHours()) {
-      timeChrono[2][0] = millis();
-      if (timeChrono[2][0] - timeChrono[2][1] >= 1000UL) {
-        timeChrono[2][1] = timeChrono[2][0];
-        lcd.setCursor(0,0);
-        lcd.print("OUT OF WORKING HOURS");
-        switchRelay(false);
-      }
-    } else {
+    if (checkWorkingHours()) {
       temperatureReadListener(true);
       intervalTimerListener();
     }
@@ -1147,13 +1152,17 @@ void runTemperatureScreen() {
 
 void runIntervalScreen() {
   lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("Relay");
-  lcd.setCursor(6,0);
-  if (intervalMode) {
-    lcd.print("on ");
+  if (workingHoursActive) {
+    lcd.setCursor(0,0);
+    lcd.print("Relay");
+    lcd.setCursor(6,0);
+    if (intervalMode) {
+      lcd.print("on ");
+    } else {
+      lcd.print("off");
+    }
   } else {
-    lcd.print("off");
+    drawOutOfWorkingHours();
   }
   lcd.setCursor(0,2);
   lcd.print("Range on:");
@@ -1165,15 +1174,7 @@ void runIntervalScreen() {
   lcd.print(formatDateNumber(intervalOffHValue) + String(":") + formatDateNumber(intervalOffMValue) + String(":") + formatDateNumber(intervalOffSValue));
   
   while(!screenExit) {
-    if (!checkWorkingHours()) {
-      timeChrono[1][0] = millis();
-      if (timeChrono[1][0] - timeChrono[1][1] >= 1000UL) {
-        timeChrono[1][1] = timeChrono[1][0];
-        lcd.setCursor(0,0);
-        lcd.print("OUT OF WORKING HOURS");
-        switchRelay(false);
-      }
-    } else {
+    if (checkWorkingHours()) {
       temperatureReadListener();
       intervalTimerListener(true);
     }
@@ -1183,8 +1184,12 @@ void runIntervalScreen() {
 
 void runWorkingHoursScreen() {
   lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("WORKING HOURS");
+  if (workingHoursActive) {
+    lcd.setCursor(0,0);
+    lcd.print("WORKING HOURS");
+  } else {
+    drawOutOfWorkingHours();
+  }
   lcd.setCursor(0,2);
   lcd.print("Start:");
   lcd.setCursor(7,2);
@@ -1195,15 +1200,7 @@ void runWorkingHoursScreen() {
   lcd.print(formatDateNumber(workingHoursOffHValue) + String(":") + formatDateNumber(workingHoursOffMValue));
   
   while(!screenExit) {
-    if (!checkWorkingHours()) {
-      timeChrono[3][0] = millis();
-      if (timeChrono[3][0] - timeChrono[3][1] >= 1000UL) {
-        timeChrono[3][1] = timeChrono[3][0];
-        lcd.setCursor(0,0);
-        lcd.print("OUT OF WORKING HOURS");
-        switchRelay(false);
-      }
-    } else {
+    if (checkWorkingHours()) {
       temperatureReadListener();
       intervalTimerListener();    
     }
