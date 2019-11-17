@@ -39,7 +39,7 @@ byte eepromIntervalOffS = 23; // 23-24
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 DateTime now;
 
-byte workingMode;
+byte workingMode = 1;
 String workingModeItems[] = {"Temperature", "Interval"};
 String workingModeItemsUppercase[] = {"TEMPERATURE", "INTERVAL"};
 
@@ -54,7 +54,7 @@ byte homeScreens[][3] = {
 bool workingHoursActive = false;
 short homeScreenNumber = 0;
 bool resetSettingsMenu = true;
-byte screenNumber = 1;
+byte screenNumber = 0;
 bool screenExit = false;
 unsigned short menuStart = 0;
 unsigned short menuEnd = 2;
